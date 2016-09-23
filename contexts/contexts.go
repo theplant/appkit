@@ -78,9 +78,12 @@ func WithLogger(logger log.Logger) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			// FIXME don't *mandate* having a request trace ID
-			traceID, _ := RequestTrace(ctx)
-			newCtx := context.WithValue(ctx, loggerKey, logger.With("req_id", traceID))
+			traceID, ok := RequestTrace(ctx)
+			l := logger // don't overwrite logger
+			if ok {
+				l = logger.With("req_id", traceID)
+			}
+			newCtx := context.WithValue(ctx, loggerKey, l)
 			h.ServeHTTP(w, r.WithContext(newCtx))
 		})
 	}
@@ -96,17 +99,20 @@ func Logger(c context.Context) (log.Logger, bool) {
 func WithGorm(db *gorm.DB) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := r.Context()
-			logger, _ := Logger(ctx)
-
-			newDB := db.New()
-			newDB.SetLogger(log.GormLogger{logger.With("context", "gorm")})
-
-			newCtx := context.WithValue(ctx, gormKey, newDB)
-
-			h.ServeHTTP(w, r.WithContext(newCtx))
+			h.ServeHTTP(w, r.WithContext(GormContext(r.Context(), db)))
 		})
 	}
+}
+
+func GormContext(c context.Context, db *gorm.DB) context.Context {
+	logger, ok := Logger(c)
+
+	newDB := db.New()
+	if ok {
+		newDB.SetLogger(log.GormLogger{logger.With("context", "gorm")})
+	}
+
+	return context.WithValue(c, gormKey, newDB)
 }
 
 func Gorm(c context.Context) (*gorm.DB, bool) {
