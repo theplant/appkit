@@ -32,8 +32,8 @@ func DefaultMiddleware(logger log.Logger) func(http.Handler) http.Handler {
 		Recovery,
 		logReq,
 		contexts.WithLogger(logger),
-		contexts.TraceRequest,
-		contexts.Status,
+		contexts.WithRequestTrace,
+		contexts.WithHTTPStatus,
 	)
 }
 
@@ -84,7 +84,7 @@ var logReq = func(h http.Handler) http.Handler {
 		defer func() {
 			duration := int64(time.Since(start) / time.Microsecond)
 
-			status, _ := contexts.ResponseStatus(r.Context())
+			status, _ := contexts.HTTPStatus(r.Context())
 
 			l = l.With(
 				"request_us", duration,

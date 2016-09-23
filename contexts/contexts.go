@@ -8,32 +8,39 @@ import (
 	"github.com/theplant/appkit/log"
 )
 
+type key int
+
+const (
+	traceKey key = iota
+	statusKey
+	loggerKey
+	gormKey
+)
+
+////////////////////////////////////////////////////////////
+
 var n = 0
 
 type TraceID interface{}
-
-type traceKey int
-
-var key traceKey = 0
 
 func genTraceId() TraceID {
 	n += 1
 	return n
 }
 
-func TraceRequest(h http.Handler) http.Handler {
+func WithRequestTrace(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tracedContext := context.WithValue(r.Context(), key, genTraceId())
+		tracedContext := context.WithValue(r.Context(), traceKey, genTraceId())
 		h.ServeHTTP(w, r.WithContext(tracedContext))
 	})
 }
 
-func GetTraceID(c context.Context) (TraceID, bool) {
-	id, ok := c.Value(key).(TraceID)
+func RequestTrace(c context.Context) (TraceID, bool) {
+	id, ok := c.Value(traceKey).(TraceID)
 	return id, ok
 }
 
-var skey traceKey = 1
+////////////////////////////////////////////////////////////
 
 type statusWriter struct {
 	http.ResponseWriter
@@ -45,17 +52,17 @@ func (s *statusWriter) WriteHeader(status int) {
 	s.ResponseWriter.WriteHeader(status)
 }
 
-func Status(h http.Handler) http.Handler {
+func WithHTTPStatus(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		sw := &statusWriter{ResponseWriter: w}
-		sContext := context.WithValue(r.Context(), skey, sw)
+		sContext := context.WithValue(r.Context(), statusKey, sw)
 		h.ServeHTTP(sw, r.WithContext(sContext))
 	})
 }
 
-func ResponseStatus(c context.Context) (int, bool) {
+func HTTPStatus(c context.Context) (int, bool) {
 	status := http.StatusOK // Default
-	sw, ok := c.Value(skey).(*statusWriter)
+	sw, ok := c.Value(statusKey).(*statusWriter)
 
 	if ok {
 		status = sw.status
@@ -65,25 +72,26 @@ func ResponseStatus(c context.Context) (int, bool) {
 
 }
 
-var lkey traceKey = 2
+////////////////////////////////////////////////////////////
 
 func WithLogger(logger log.Logger) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			traceID, _ := GetTraceID(ctx)
-			newCtx := context.WithValue(ctx, lkey, logger.With("req_id", traceID))
+			// FIXME don't *mandate* having a request trace ID
+			traceID, _ := RequestTrace(ctx)
+			newCtx := context.WithValue(ctx, loggerKey, logger.With("req_id", traceID))
 			h.ServeHTTP(w, r.WithContext(newCtx))
 		})
 	}
 }
 
 func Logger(c context.Context) (log.Logger, bool) {
-	logger, ok := c.Value(lkey).(log.Logger)
+	logger, ok := c.Value(loggerKey).(log.Logger)
 	return logger, ok
 }
 
-var dbkey traceKey = 3
+////////////////////////////////////////////////////////////
 
 func WithGorm(db *gorm.DB) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
@@ -94,7 +102,7 @@ func WithGorm(db *gorm.DB) func(http.Handler) http.Handler {
 			newDB := db.New()
 			newDB.SetLogger(log.GormLogger{logger.With("context", "gorm")})
 
-			newCtx := context.WithValue(ctx, dbkey, newDB)
+			newCtx := context.WithValue(ctx, gormKey, newDB)
 
 			h.ServeHTTP(w, r.WithContext(newCtx))
 		})
@@ -102,6 +110,6 @@ func WithGorm(db *gorm.DB) func(http.Handler) http.Handler {
 }
 
 func Gorm(c context.Context) (*gorm.DB, bool) {
-	db, ok := c.Value(dbkey).(*gorm.DB)
+	db, ok := c.Value(gormKey).(*gorm.DB)
 	return db, ok
 }
