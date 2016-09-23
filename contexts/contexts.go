@@ -23,14 +23,14 @@ var n = 0
 
 type TraceID interface{}
 
-func genTraceId() TraceID {
-	n += 1
+func genTraceID() TraceID {
+	n++
 	return n
 }
 
 func WithRequestTrace(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tracedContext := context.WithValue(r.Context(), traceKey, genTraceId())
+		tracedContext := context.WithValue(r.Context(), traceKey, genTraceID())
 		h.ServeHTTP(w, r.WithContext(tracedContext))
 	})
 }
