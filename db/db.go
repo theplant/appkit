@@ -2,9 +2,10 @@
 package db
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/jinzhu/gorm"
+	"github.com/theplant/appkit/log"
 )
 
 // Config is for configuration that you can embed in your app config.
@@ -14,23 +15,30 @@ type Config struct {
 	Debug   bool
 }
 
-// Setup creates a DB object.
-func Setup(config Config) (*gorm.DB, error) {
+// New creates a DB object.
+func New(l log.Logger, config Config) (*gorm.DB, error) {
 	var err error
 	var db *gorm.DB
 
-	log.Println("appkit/db: opening database connection")
+	l = l.With("context", "appkit/db")
+	l.Debug().Log("msg", "opening database connection")
 
 	db, err = gorm.Open(config.Dialect, config.Params)
 
 	if err != nil {
+		l.Error().Log(
+			"during", "appkit/db.New",
+			"err", err,
+			"msg", fmt.Sprintf("error configuring database: %v", err),
+		)
 		return db, err
 	}
 
 	if config.Debug {
-		log.Println("appkit/db: opening gorm debug mode")
+		l.Debug().Log("msg", "opening gorm debug mode")
 		db.LogMode(true)
 	}
 
+	l.Debug().Log("msg", "database good to go")
 	return db, nil
 }
