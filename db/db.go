@@ -20,14 +20,14 @@ func New(l log.Logger, config Config) (*gorm.DB, error) {
 	var err error
 	var db *gorm.DB
 
-	l = l.With("context", "appkit/db")
+	l = l.With("context", "appkit/db.New")
 	l.Debug().Log("msg", "opening database connection")
 
 	db, err = gorm.Open(config.Dialect, config.Params)
 
 	if err != nil {
 		l.Error().Log(
-			"during", "appkit/db.New",
+			"during", "gorm.Open",
 			"err", err,
 			"msg", fmt.Sprintf("error configuring database: %v", err),
 		)
