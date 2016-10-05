@@ -34,6 +34,8 @@ func New(l log.Logger, config Config) (*gorm.DB, error) {
 		return db, err
 	}
 
+	db.SetLogger(log.GormLogger{l})
+
 	if config.Debug {
 		l.Debug().Log("msg", "opening gorm debug mode")
 		db.LogMode(true)
