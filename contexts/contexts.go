@@ -119,3 +119,13 @@ func Gorm(c context.Context) (*gorm.DB, bool) {
 	db, ok := c.Value(gormKey).(*gorm.DB)
 	return db, ok
 }
+
+func MustGetGorm(c context.Context) *gorm.DB {
+	db, ok := Gorm(c)
+
+	if !ok {
+		panic("can not find gorm in context")
+	}
+
+	return db
+}
