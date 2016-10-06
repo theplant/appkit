@@ -12,7 +12,6 @@ import (
 type Config struct {
 	Dialect string `default:"postgres"`
 	Params  string `required:"true"`
-	Debug   bool
 }
 
 // New creates a DB object.
@@ -35,11 +34,7 @@ func New(l log.Logger, config Config) (*gorm.DB, error) {
 	}
 
 	db.SetLogger(log.GormLogger{l})
-
-	if config.Debug {
-		l.Debug().Log("msg", "opening gorm debug mode")
-		db.LogMode(true)
-	}
+	db.LogMode(true)
 
 	l.Debug().Log("msg", "database good to go")
 	return db, nil
