@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"time"
 
 	l "github.com/go-kit/kit/log"
@@ -30,82 +29,14 @@ func (logger Logger) Info() l.Logger {
 }
 */
 func Default() Logger {
-	//	logger := l.NewLogfmtLogger(l.NewSyncWriter(os.Stdout))
-	//	logger = l.NewContext(logger).With("ts", l.DefaultTimestampUTC, "caller", l.DefaultCaller)
-
-	logger := PrettyFmt(l.NewSyncWriter(os.Stdout))
 	var timer l.Valuer = func() interface{} { return time.Now().Format(time.StampMilli) }
+
+	logger := l.NewLogfmtLogger(l.NewSyncWriter(os.Stdout))
 	logger = l.NewContext(logger).With("ts", timer, "caller", l.DefaultCaller)
 
 	l := levels.New(logger)
+
 	return Logger{&l}
-
-}
-
-type prettyFmt struct {
-	w io.Writer
-}
-
-func PrettyFmt(w io.Writer) l.Logger {
-	return &prettyFmt{w}
-}
-
-func (l prettyFmt) Log(keysvals ...interface{}) error {
-	data := map[interface{}]interface{}{}
-
-	for i, key := range keysvals {
-		if i%2 == 0 {
-			data[key] = keysvals[i+1]
-		}
-	}
-
-	level, ok := data["level"]
-	delete(data, "level")
-	if !ok {
-		level = "<none>"
-	}
-
-	ts, ok := data["ts"]
-	delete(data, "ts")
-	var tsStr string
-	if ok {
-		tsStr = ts.(string)
-	} else {
-		tsStr = strings.Repeat(" ", len(time.StampMilli))
-	}
-
-	msg, ok := data["msg"]
-	delete(data, "msg")
-	if msg == nil || len(msg.(string)) == 0 {
-		msg = "<no msg>"
-	}
-
-	colour := "37"
-	switch level {
-	case "crit":
-		colour = "35"
-	case "error":
-		colour = "31"
-	case "warn":
-		colour = "33"
-	case "info":
-		colour = "32"
-	case "debug":
-		colour = "30"
-	}
-
-	output := []string{fmt.Sprintf("\033[%s;1m%s: %s\033[0m (%s)", colour, tsStr, msg, level)}
-
-	for k, v := range data {
-		output = append(output, fmt.Sprintf("  %s=%v", k, v))
-	}
-
-	output = append(output, "", "")
-
-	if _, err := l.w.Write([]byte(strings.Join(output, "\n"))); err != nil {
-		return err
-	}
-	return nil
 }
 
 type logWriter struct {
