@@ -47,6 +47,7 @@ func LogRequest(h http.Handler) http.Handler {
 				"request_us", duration,
 				"status", status,
 				//					"response_size", rw.Size(),
+				"user_agent", r.UserAgent(),
 			)
 
 			msg := fmt.Sprintf("%s %s -> %03d %s", r.Method, path, status, http.StatusText(status))
