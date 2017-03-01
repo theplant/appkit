@@ -29,7 +29,7 @@ func (logger Logger) Info() l.Logger {
 }
 */
 func Default() Logger {
-	var timer l.Valuer = func() interface{} { return time.Now().Format(time.StampMilli) }
+	var timer l.Valuer = func() interface{} { return time.Now().Format(time.RFC3339Nano) }
 
 	logger := l.NewLogfmtLogger(l.NewSyncWriter(os.Stdout))
 	logger = l.NewContext(logger).With("ts", timer, "caller", l.DefaultCaller)
