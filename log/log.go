@@ -6,41 +6,58 @@ import (
 	"os"
 	"time"
 
-	l "github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/levels"
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 )
 
 type Logger struct {
-	*levels.Levels
+	*log.Context
 }
 
-func (logger Logger) With(keysvals ...interface{}) Logger {
-	levels := logger.Levels.With(keysvals...)
-	return Logger{&levels}
+func (l Logger) With(keysvals ...interface{}) Logger {
+	l.Context = l.Context.With(keysvals...)
+	return l
 }
 
-/*
-func (logger Logger) Debug() l.Logger {
-	return l.NewNopLogger()
+func (l Logger) Debug() log.Logger {
+	l.Context = l.Context.WithPrefix(level.Key(), level.ErrorValue())
+	return l
 }
 
-func (logger Logger) Info() l.Logger {
-	return l.NewNopLogger()
+func (l Logger) Info() log.Logger {
+	l.Context = l.Context.WithPrefix(level.Key(), level.InfoValue())
+	return l
 }
-*/
+
+func (l Logger) Crit() log.Logger {
+	l.Context = l.Context.WithPrefix(level.Key(), level.ErrorValue())
+	return l
+}
+
+func (l Logger) Error() log.Logger {
+	l.Context = l.Context.WithPrefix(level.Key(), level.ErrorValue())
+	return l
+}
+
+func (l Logger) Warn() log.Logger {
+	l.Context = l.Context.WithPrefix(level.Key(), level.WarnValue())
+	return l
+}
+
 func Default() Logger {
-	var timer l.Valuer = func() interface{} { return time.Now().Format(time.RFC3339Nano) }
+	var timer log.Valuer = func() interface{} { return time.Now().Format(time.RFC3339Nano) }
 
-	logger := l.NewLogfmtLogger(l.NewSyncWriter(os.Stdout))
-	logger = l.NewContext(logger).With("ts", timer, "caller", l.DefaultCaller)
+	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+	ctx := log.NewContext(l)
+	ctx = ctx.With("ts", timer, "caller", log.DefaultCaller)
 
-	l := levels.New(logger)
-
-	return Logger{&l}
+	return Logger{
+		Context: ctx,
+	}
 }
 
 type logWriter struct {
-	l.Logger
+	log.Logger
 }
 
 func (l logWriter) Write(p []byte) (int, error) {
@@ -48,7 +65,7 @@ func (l logWriter) Write(p []byte) (int, error) {
 	return len(p), err
 }
 
-func LogWriter(logger l.Logger) io.Writer {
+func LogWriter(logger log.Logger) io.Writer {
 	return &logWriter{logger}
 }
 
