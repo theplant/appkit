@@ -11,36 +11,36 @@ import (
 )
 
 type Logger struct {
-	*log.Context
+	log.Logger
 }
 
 func (l Logger) With(keysvals ...interface{}) Logger {
-	l.Context = l.Context.With(keysvals...)
+	l.Logger = log.With(l.Logger, keysvals...)
 	return l
 }
 
 func (l Logger) Debug() log.Logger {
-	l.Context = l.Context.WithPrefix(level.Key(), level.ErrorValue())
+	l.Logger = level.Debug(l.Logger)
 	return l
 }
 
 func (l Logger) Info() log.Logger {
-	l.Context = l.Context.WithPrefix(level.Key(), level.InfoValue())
+	l.Logger = level.Info(l.Logger)
 	return l
 }
 
 func (l Logger) Crit() log.Logger {
-	l.Context = l.Context.WithPrefix(level.Key(), level.ErrorValue())
+	l.Logger = level.Error(l.Logger)
 	return l
 }
 
 func (l Logger) Error() log.Logger {
-	l.Context = l.Context.WithPrefix(level.Key(), level.ErrorValue())
+	l.Logger = level.Error(l.Logger)
 	return l
 }
 
 func (l Logger) Warn() log.Logger {
-	l.Context = l.Context.WithPrefix(level.Key(), level.WarnValue())
+	l.Logger = level.Warn(l.Logger)
 	return l
 }
 
@@ -48,12 +48,13 @@ func Default() Logger {
 	var timer log.Valuer = func() interface{} { return time.Now().Format(time.RFC3339Nano) }
 
 	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-	ctx := log.NewContext(l)
-	ctx = ctx.With("ts", timer, "caller", log.DefaultCaller)
 
-	return Logger{
-		Context: ctx,
+	lg := Logger{
+		Logger: l,
 	}
+	lg = lg.With("ts", timer, "caller", log.DefaultCaller)
+
+	return lg
 }
 
 type logWriter struct {
