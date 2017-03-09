@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/jinzhu/gorm"
+	"github.com/pborman/uuid"
 	"github.com/theplant/appkit/log"
 )
 
@@ -19,13 +20,11 @@ const (
 
 ////////////////////////////////////////////////////////////
 
-var n = 0
-
+// Opaque type for request ID.
 type TraceID interface{}
 
 func genTraceID() TraceID {
-	n++
-	return n
+	return uuid.New()
 }
 
 func WithRequestTrace(h http.Handler) http.Handler {
