@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/theplant/appkit/contexts"
+	"github.com/theplant/appkit/contexts/trace"
 	"github.com/theplant/appkit/log"
 )
 
@@ -12,8 +13,8 @@ func DefaultMiddleware(logger log.Logger) func(http.Handler) http.Handler {
 		// Recovery should come before logReq to set the status code to 500
 		Recovery,
 		LogRequest,
-		contexts.WithLogger(logger),
-		contexts.WithRequestTrace,
+		log.WithLogger(logger),
+		trace.WithRequestTrace,
 		contexts.WithHTTPStatus,
 	)
 }

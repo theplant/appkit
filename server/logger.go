@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/theplant/appkit/contexts"
+	"github.com/theplant/appkit/log"
 )
 
 // Will absorb panics in earlier Middleware. Times the request and logs the result. FIXME split the timing out into a separate Middleware
@@ -22,7 +23,7 @@ func LogRequest(h http.Handler) http.Handler {
 
 		ctx := r.Context()
 
-		logger, ok := contexts.Logger(ctx)
+		logger, ok := log.FromContext(ctx)
 
 		if !ok {
 			h.ServeHTTP(rw, r)
