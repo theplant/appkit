@@ -80,7 +80,7 @@ func LogRequest(h http.Handler) http.Handler {
 	})
 }
 
-// Lifted from gin-gonic/gin/context.go and gin-gonic/gin/recovery.go
+// Adapted from gin-gonic/gin/context.go and gin-gonic/gin/recovery.go
 
 var (
 	dunno     = []byte("???")
@@ -90,11 +90,7 @@ var (
 )
 
 func clientIP(r *http.Request) string {
-	clientIP := strings.TrimSpace(r.Header.Get("X-Real-Ip"))
-	if len(clientIP) > 0 {
-		return clientIP
-	}
-	clientIP = r.Header.Get("X-Forwarded-For")
+	clientIP := r.Header.Get("X-Forwarded-For")
 	if index := strings.IndexByte(clientIP, ','); index >= 0 {
 		clientIP = clientIP[0:index]
 	}
