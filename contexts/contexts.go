@@ -93,6 +93,14 @@ func Logger(c context.Context) (log.Logger, bool) {
 	return logger, ok
 }
 
+func ForceLogger(c context.Context) log.Logger {
+	logger, ok := Logger(c)
+	if !ok {
+		logger = log.Default()
+	}
+	return logger
+}
+
 ////////////////////////////////////////////////////////////
 
 func WithGorm(db *gorm.DB) func(http.Handler) http.Handler {
