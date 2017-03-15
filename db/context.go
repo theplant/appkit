@@ -15,12 +15,12 @@ const gormKey key = iota
 func WithGorm(db *gorm.DB) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			h.ServeHTTP(w, r.WithContext(gormContext(r.Context(), db)))
+			h.ServeHTTP(w, r.WithContext(GormContext(r.Context(), db)))
 		})
 	}
 }
 
-func gormContext(c context.Context, db *gorm.DB) context.Context {
+func GormContext(c context.Context, db *gorm.DB) context.Context {
 	logger, ok := log.FromContext(c)
 
 	newDB := db.New()
