@@ -71,6 +71,10 @@ Helper for opening a `gorm.DB` connection configured with a `log.Logger`. Provid
 
 A basic interface for monitoring request times and other arbitrary data, and recording data into InfluxDB.
 
+# [Error Notification](errornotifier/README.md)
+
+Interface for pushing panics and arbitrary errors into error logging systems. Provides implementation for Airbrake monitoring.
+
 # Contexts
 
 Context wrappers and http.Handler middleware to setup and use various `context.Context`s.
