@@ -1,3 +1,10 @@
+# PR [#30](https://github.com/theplant/appkit/pull/30)
+
+## Added
+
+* `monitoring` package
+
+
 # Context cleanup (PR #29)
 
 ## Breaking changes
