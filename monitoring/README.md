@@ -88,9 +88,9 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 * Provide simple wrapper API for context-based metrics:
 
-   ```
-func InsertRecord(context.Context, string, interface{}, map[string]string, time.Time)
-func Count(context.Context, measurement string, value float64, tags map[string]string)
-```
+  ```
+  func InsertRecord(context.Context, string, interface{}, map[string]string, time.Time)
+  func Count(context.Context, measurement string, value float64, tags map[string]string)
+  ```
 
 * Make path-scrubbing more flexible. Eg. scrub out product names: `/products/blue-winter-coat` -> `/products/:product_code`.

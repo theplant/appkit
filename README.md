@@ -67,6 +67,10 @@ Helper for starting a HTTP server configured with a `log.Logger`. Provides `Conf
 
 Helper for opening a `gorm.DB` connection configured with a `log.Logger`. Provides `Config` and `New`.
 
+# [Monitoring](monitoring/README.md)
+
+A basic interface for monitoring request times and other arbitrary data, and recording data into InfluxDB.
+
 # Contexts
 
 Context wrappers and http.Handler middleware to setup and use various `context.Context`s.

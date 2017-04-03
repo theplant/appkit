@@ -39,7 +39,7 @@ func WithMonitor(m Monitor) func(h http.Handler) http.Handler {
 	}
 }
 
-// MonitorContext installs a given Monitor in the returned context
+// Context installs a given Monitor in the returned context
 func Context(c context.Context, m Monitor) context.Context {
 	return context.WithValue(c, monitorKey, m)
 }
