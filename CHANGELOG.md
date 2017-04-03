@@ -1,3 +1,9 @@
+# PR [#32](https://github.com/theplant/appkit/pull/32)
+
+## Added
+
+* [`errornotifier` package](errornotifier/README.md)
+
 # PR [#30](https://github.com/theplant/appkit/pull/30)
 
 ## Added
