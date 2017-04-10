@@ -21,12 +21,11 @@ Create an InfluxDB monitor in `main.go`:
 
 ```
 if monitor, err := monitoring.NewInfluxdbMonitor(appConfig.InfluxDB, l); err != nil {
+	// handle the error...
 	l.Info().Log(
 		"err", err,
 		"msg", fmt.Sprintf("error configuring influxdb monitor: %v", err),
 	)
-} else {
-	// handle the error
 }
 ```
 
