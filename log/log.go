@@ -57,6 +57,12 @@ func Default() Logger {
 	return lg
 }
 
+// NewNopLogger returns a logger that doesn't do anything. This just a wrapper of
+// `go-kit/log.nopLogger`.
+func NewNopLogger() Logger {
+	return Logger{Logger: log.NewNopLogger()}
+}
+
 type logWriter struct {
 	log.Logger
 }
