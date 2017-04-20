@@ -43,6 +43,14 @@ Supported levels:
 
 Use others that are relevant to your app or domain.
 
+## No operation logger for testing
+
+Provide a logger that doesn't do anything. This is quite useful for testing.
+
+```go
+logger := log.NewNopLogger()
+```
+
 # Server
 
 ## HTTP Listener

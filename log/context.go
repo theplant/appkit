@@ -26,11 +26,22 @@ func WithLogger(logger Logger) func(http.Handler) http.Handler {
 	}
 }
 
-func FromContext(c context.Context) (Logger, bool) {
-	logger, ok := c.Value(loggerKey).(Logger)
-	return logger, ok
+// Context installs a given Logger in the returned context
+func Context(ctx context.Context, l Logger) context.Context {
+	return context.WithValue(ctx, loggerKey, l)
 }
 
+// FromContext extracts a Logger from a (possibly nil) context.
+func FromContext(c context.Context) (Logger, bool) {
+	if c != nil {
+		logger, ok := c.Value(loggerKey).(Logger)
+		return logger, ok
+	}
+	return Logger{}, false
+}
+
+// ForceContext extracts a Logger from a (possibly nil) context, or
+// returns a log.Default().
 func ForceContext(c context.Context) Logger {
 	logger, ok := FromContext(c)
 	if !ok {

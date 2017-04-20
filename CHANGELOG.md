@@ -1,3 +1,14 @@
+# PR [#33](https://github.com/theplant/appkit/pull/32)
+
+## Added
+
+* [`log.NewNopLogger` function](https://github.com/theplant/appkit/blob/add-nop-logger/log/log.go#L60-L64)
+* [`log.Context` function](https://github.com/theplant/appkit/blob/add-nop-logger/log/context.go#L29-L32)
+
+## Fixed
+
+* `log.FromContext` panic when receiving a nil context bug
+
 # PR [#32](https://github.com/theplant/appkit/pull/32)
 
 ## Added
