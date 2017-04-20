@@ -26,6 +26,11 @@ func WithLogger(logger Logger) func(http.Handler) http.Handler {
 	}
 }
 
+// Context installs a given Logger in the returned context
+func Context(ctx context.Context, l Logger) context.Context {
+	return context.WithValue(ctx, loggerKey, l)
+}
+
 // FromContext extracts a Logger from a (possibly nil) context.
 func FromContext(c context.Context) (Logger, bool) {
 	if c != nil {
