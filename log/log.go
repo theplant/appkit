@@ -20,6 +20,9 @@ func (l Logger) With(keysvals ...interface{}) Logger {
 	return l
 }
 
+/*
+WithError can log kerrs type of err to structured log
+*/
 func (l Logger) WithError(err error) log.Logger {
 	keysvals, msg, stacktrace := kerrs.Extract(err)
 	keysvals = append(keysvals, "msg", msg, "stacktrace", stacktrace)
