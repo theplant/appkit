@@ -29,3 +29,8 @@
 * Move Gorm/DB context functions from `contexts` to `appkit/db`
 * Move logging context functions from `contexts` to `appkit/log`
 * Move tracing context functions from `contexts` to `contexts/trace`
+
+# Add Appkit Errors (PR #35)
+
+* Add Package `appkit/kerrs`
+* Add `WithError` to log to be able to log appkit errors with ease
