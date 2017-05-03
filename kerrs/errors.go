@@ -23,22 +23,6 @@ func Wrapv(err error, message string, keyvals ...interface{}) error {
 /*
 Append returns a multi error, useful when say you are looping csv file lines for return orders. one of them have error, But you should continue to deal with next lines, But you want the function to return error.
 
-```go
-func HandleCSV(csvfile ...) (err error) {
-	for {
-		lineErr := handleLine(line)
-		if err != nil {
-			err = kerrs.Append(err, err)
-			continue
-		}
-
-		// NOT
-		// if err != nil {
-		//	return
-		// }
-	}
-}
-```
 */
 func Append(err error, errs ...error) error {
 	return merr.Append(err, errs...).ErrorOrNil()

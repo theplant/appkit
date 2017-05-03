@@ -3,6 +3,7 @@ package kerrs_test
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/theplant/appkit/kerrs"
 )
@@ -16,7 +17,30 @@ func ExampleNewv_errors() {
 
 	fmt.Printf("%+v\n\n", err2)
 
-	err3 := kerrs.Append(err1, err2, err1)
+	var handleCSV = func(csvContext string) (err error) {
+		var handleLine = func(line string) (err error) {
+			if len(line) > 3 {
+				err = fmt.Errorf("Invalid Length for %s", line)
+			}
+			return
+		}
+		lines := strings.Split(csvContext, "\n")
+		for _, line := range lines {
+			lineErr := handleLine(line)
+			if lineErr != nil {
+				err = kerrs.Append(err, lineErr)
+				continue
+			}
+
+			// NOT
+			// if err != nil {
+			//	return
+			// }
+		}
+		return
+	}
+
+	err3 := handleCSV("a\n1234\nb11111\nc")
 
 	fmt.Printf("%+v\n", err3)
 
@@ -25,7 +49,7 @@ func ExampleNewv_errors() {
 	// github.com/theplant/appkit/kerrs.Wrapv
 	// 	/Users/sunfmin/gopkg/src/github.com/theplant/appkit/kerrs/errors.go:20
 	// github.com/theplant/appkit/kerrs_test.ExampleNewv_errors
-	// 	/Users/sunfmin/gopkg/src/github.com/theplant/appkit/kerrs/errors_test.go:15
+	// 	/Users/sunfmin/gopkg/src/github.com/theplant/appkit/kerrs/errors_test.go:16
 	// testing.runExample
 	// 	/usr/local/Cellar/go/1.8/libexec/src/testing/example.go:122
 	// testing.runExamples
@@ -39,10 +63,9 @@ func ExampleNewv_errors() {
 	// runtime.goexit
 	// 	/usr/local/Cellar/go/1.8/libexec/src/runtime/asm_amd64.s:2197
 	//
-	// 3 errors occurred:
+	// 2 errors occurred:
 	//
-	// * wrong code=12123 value=12312: hi, I am an error
-	// * more explain about the error morecontext=999: wrong code=12123 value=12312: hi, I am an error
-	// * wrong code=12123 value=12312: hi, I am an error
+	// * Invalid Length for 1234
+	// * Invalid Length for b11111
 
 }
