@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/theplant/appkit/kerrs"
 )
 
 type Logger struct {
@@ -16,6 +17,13 @@ type Logger struct {
 
 func (l Logger) With(keysvals ...interface{}) Logger {
 	l.Logger = log.With(l.Logger, keysvals...)
+	return l
+}
+
+func (l Logger) WithError(err error) log.Logger {
+	keysvals, msg, stacktrace := kerrs.Extract(err)
+	keysvals = append(keysvals, "msg", msg, "stacktrace", stacktrace)
+	l.Logger = level.Error(log.With(l.Logger, keysvals...))
 	return l
 }
 
