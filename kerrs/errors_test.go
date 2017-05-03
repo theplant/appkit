@@ -8,7 +8,7 @@ import (
 )
 
 func ExampleNewv_errors() {
-	err0 := errors.New("Hi, I am an error!")
+	err0 := errors.New("hi, I am an error")
 	err1 := kerrs.Wrapv(err0, "wrong", "code", "12123", "value", 12312)
 
 	// fmt.Printf("%+v", err)
@@ -21,7 +21,7 @@ func ExampleNewv_errors() {
 	fmt.Printf("%+v\n", err3)
 
 	// Output:
-	// more explain about the error morecontext=999: wrong code=12123 value=12312: Hi, I am an error!
+	// more explain about the error morecontext=999: wrong code=12123 value=12312: hi, I am an error
 	// github.com/theplant/appkit/kerrs.Wrapv
 	// 	/Users/sunfmin/gopkg/src/github.com/theplant/appkit/kerrs/errors.go:20
 	// github.com/theplant/appkit/kerrs_test.ExampleNewv_errors
@@ -41,8 +41,8 @@ func ExampleNewv_errors() {
 	//
 	// 3 errors occurred:
 	//
-	// * wrong code=12123 value=12312: Hi, I am an error!
-	// * more explain about the error morecontext=999: wrong code=12123 value=12312: Hi, I am an error!
-	// * wrong code=12123 value=12312: Hi, I am an error!
+	// * wrong code=12123 value=12312: hi, I am an error
+	// * more explain about the error morecontext=999: wrong code=12123 value=12312: hi, I am an error
+	// * wrong code=12123 value=12312: hi, I am an error
 
 }
