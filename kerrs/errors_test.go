@@ -8,7 +8,7 @@ import (
 	"github.com/theplant/appkit/kerrs"
 )
 
-func ExampleNewv_errors() {
+func ExampleWrapv_errors() {
 	err0 := errors.New("hi, I am an error")
 	err1 := kerrs.Wrapv(err0, "wrong", "code", "12123", "value", 12312)
 
