@@ -1,13 +1,15 @@
 package kerrs_test
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/theplant/appkit/kerrs"
 )
 
 func ExampleNewv_errors() {
-	err1 := kerrs.Newv("Hi, I am an error!", "code", "12123", "value", 12312)
+	err0 := errors.New("Hi, I am an error!")
+	err1 := kerrs.Wrapv(err0, "wrong", "code", "12123", "value", 12312)
 
 	// fmt.Printf("%+v", err)
 	err2 := kerrs.Wrapv(err1, "more explain about the error", "morecontext", "999")
@@ -19,11 +21,11 @@ func ExampleNewv_errors() {
 	fmt.Printf("%+v\n", err3)
 
 	// Output:
-	// more explain about the error morecontext=999: Hi, I am an error! code=12123 value=12312
+	// more explain about the error morecontext=999: wrong code=12123 value=12312: Hi, I am an error!
 	// github.com/theplant/appkit/kerrs.Wrapv
-	// 	/Users/sunfmin/gopkg/src/github.com/theplant/appkit/kerrs/errors.go:21
+	// 	/Users/sunfmin/gopkg/src/github.com/theplant/appkit/kerrs/errors.go:20
 	// github.com/theplant/appkit/kerrs_test.ExampleNewv_errors
-	// 	/Users/sunfmin/gopkg/src/github.com/theplant/appkit/kerrs/errors_test.go:13
+	// 	/Users/sunfmin/gopkg/src/github.com/theplant/appkit/kerrs/errors_test.go:15
 	// testing.runExample
 	// 	/usr/local/Cellar/go/1.8/libexec/src/testing/example.go:122
 	// testing.runExamples
@@ -39,8 +41,8 @@ func ExampleNewv_errors() {
 	//
 	// 3 errors occurred:
 	//
-	// * Hi, I am an error! code=12123 value=12312
-	// * more explain about the error morecontext=999: Hi, I am an error! code=12123 value=12312
-	// * Hi, I am an error! code=12123 value=12312
+	// * wrong code=12123 value=12312: Hi, I am an error!
+	// * more explain about the error morecontext=999: wrong code=12123 value=12312: Hi, I am an error!
+	// * wrong code=12123 value=12312: Hi, I am an error!
 
 }
