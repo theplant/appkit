@@ -22,23 +22,7 @@ func Append(err error, errs ...error) error
 Append returns a multi error, useful when say you are looping csv file lines for return orders. one of them have error, But you should continue to deal with next lines, But you want the function to return error.
 
 
-
-## Wrapv
-``` go
-func Wrapv(err error, message string, keyvals ...interface{}) error
-```
-Wrapv should be invoked whenever an error returned from other libraries you imported, and you didn't handle the error, you should wrap it and return it to upper side. By wrapping it, includes stacktrace, and any context values, like your func parameters, So that when it gets logged, It reveal more contexts for developer to know where and what the problem is.
-
-
 ```go
-	err0 := errors.New("hi, I am an error")
-	err1 := kerrs.Wrapv(err0, "wrong", "code", "12123", "value", 12312)
-	
-	// fmt.Printf("%+v", err)
-	err2 := kerrs.Wrapv(err1, "more explain about the error", "morecontext", "999")
-	
-	fmt.Printf("%+v\n\n", err2)
-	
 	var handleCSV = func(csvContext string) (err error) {
 	    var handleLine = func(line string) (err error) {
 	        if len(line) > 3 {
@@ -63,14 +47,36 @@ Wrapv should be invoked whenever an error returned from other libraries you impo
 	}
 	
 	err3 := handleCSV("a\n1234\nb11111\nc")
-	
 	fmt.Printf("%+v\n", err3)
+	
+	// Output:
+	// 2 errors occurred:
+	//
+	// * Invalid Length for 1234
+	// * Invalid Length for b11111
+```
+
+## Wrapv
+``` go
+func Wrapv(err error, message string, keyvals ...interface{}) error
+```
+Wrapv should be invoked whenever an error returned from other libraries you imported, and you didn't handle the error, you should wrap it and return it to upper side. By wrapping it, includes stacktrace, and any context values, like your func parameters, So that when it gets logged, It reveal more contexts for developer to know where and what the problem is.
+
+
+```go
+	err0 := errors.New("hi, I am an error")
+	err1 := kerrs.Wrapv(err0, "wrong", "code", "12123", "value", 12312)
+	
+	// fmt.Printf("%+v", err)
+	err2 := kerrs.Wrapv(err1, "more explain about the error", "morecontext", "999")
+	
+	fmt.Printf("%+v\n\n", err2)
 	
 	// Output:
 	// more explain about the error morecontext=999: wrong code=12123 value=12312: hi, I am an error
 	// github.com/theplant/appkit/kerrs.Wrapv
 	// 	/Users/sunfmin/gopkg/src/github.com/theplant/appkit/kerrs/errors.go:20
-	// github.com/theplant/appkit/kerrs_test.ExampleNewv_errors
+	// github.com/theplant/appkit/kerrs_test.ExampleWrapv_errors
 	// 	/Users/sunfmin/gopkg/src/github.com/theplant/appkit/kerrs/errors_test.go:16
 	// testing.runExample
 	// 	/usr/local/Cellar/go/1.8/libexec/src/testing/example.go:122
@@ -79,16 +85,11 @@ Wrapv should be invoked whenever an error returned from other libraries you impo
 	// testing.(*M).Run
 	// 	/usr/local/Cellar/go/1.8/libexec/src/testing/testing.go:823
 	// main.main
-	// 	github.com/theplant/appkit/kerrs/_test/_testmain.go:44
+	// 	github.com/theplant/appkit/kerrs/_test/_testmain.go:46
 	// runtime.main
 	// 	/usr/local/Cellar/go/1.8/libexec/src/runtime/proc.go:185
 	// runtime.goexit
 	// 	/usr/local/Cellar/go/1.8/libexec/src/runtime/asm_amd64.s:2197
-	//
-	// 2 errors occurred:
-	//
-	// * Invalid Length for 1234
-	// * Invalid Length for b11111
 ```
 
 
