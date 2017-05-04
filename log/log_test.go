@@ -35,15 +35,7 @@ var logErrCases = []struct {
 level error testcase TestLogError lineno 23 msg wrong io: EOF stacktrace wrong io testcase=TestLogError lineno=23: EOF
 github.com/theplant/appkit/kerrs.Wrapv
 	github.com/theplant/appkit/kerrs/errors.go:27
-github.com/theplant/appkit/log_test.init
-	github.com/theplant/appkit/log/log_test.go:33
-main.init
-	github.com/theplant/appkit/log/_test/_testmain.go:50
-runtime.main
-	runtime/proc.go:173
-runtime.goexit
-	runtime/asm_amd64.s:2197
-`,
+github.com/theplant/appkit/log_test.init`,
 	},
 	{
 		err: errors.New("it's error"),
@@ -57,15 +49,7 @@ level error msg it's error
 level error testcase TestLogError lineno <value-missing> msg the message: EOF stacktrace the message testcase=TestLogError lineno="<value-missing>": EOF
 github.com/theplant/appkit/kerrs.Wrapv
 	github.com/theplant/appkit/kerrs/errors.go:27
-github.com/theplant/appkit/log_test.init
-	github.com/theplant/appkit/log/log_test.go:55
-main.init
-	github.com/theplant/appkit/log/_test/_testmain.go:50
-runtime.main
-	runtime/proc.go:173
-runtime.goexit
-	runtime/asm_amd64.s:2197
-`,
+github.com/theplant/appkit/log_test.init`,
 	},
 }
 
@@ -82,7 +66,6 @@ func TestLogError(t *testing.T) {
 		l = log.Logger{lev}
 
 		l.WithError(errc.err).Log()
-
 		diff := testingutils.PrettyJsonDiff(errc.expected, cleanStacktrace(output.String()))
 		if len(diff) > 0 {
 			t.Error(diff)
@@ -92,6 +75,10 @@ func TestLogError(t *testing.T) {
 
 func cleanStacktrace(stacktrace string) (cleantrace string) {
 	cleantrace = strings.Replace(stacktrace, build.Default.GOPATH+"/src/", "", -1)
-	cleantrace = strings.Replace(cleantrace, build.Default.GOROOT+"/src/", "", -1)
+	lines := strings.Split(cleantrace, "\n")
+	if len(lines) >= 4 {
+		lines = lines[0:5]
+	}
+	cleantrace = strings.Join(lines, "\n")
 	return
 }
