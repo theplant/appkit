@@ -36,7 +36,7 @@ func Append(err error, errs ...error) error {
 }
 
 /*
-Extract an error of it's context values and message
+Extract an error of it's context values and message, it loop through to each level of errors, and concat each err message to a whole error message, and cause field is removed for easy to read, and concat each level error's stacktrace together to make a new whole stacktrace.
 */
 func Extract(err error) (kvs []interface{}, msg string, stacktrace string) {
 	if err == nil {
