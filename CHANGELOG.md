@@ -1,3 +1,11 @@
+# PR [#35](https://github.com/theplant/appkit/pull/35)
+
+## Added
+
+* Add Package appkit/kerrs
+* Add `log.WithError` to log to be able to log appkit errors with ease
+
+
 # PR [#33](https://github.com/theplant/appkit/pull/32)
 
 ## Added
@@ -22,7 +30,7 @@
 * `monitoring` package
 
 
-# Context cleanup (PR #29)
+# PR [#29](https://github.com/theplant/appkit/pull/29) Context cleanup
 
 ## Breaking changes
 
@@ -30,7 +38,3 @@
 * Move logging context functions from `contexts` to `appkit/log`
 * Move tracing context functions from `contexts` to `contexts/trace`
 
-# Add Appkit Errors (PR #35)
-
-* Add Package `appkit/kerrs`
-* Add `WithError` to log to be able to log appkit errors with ease

@@ -25,7 +25,10 @@ WithError can log kerrs type of err to structured log
 */
 func (l Logger) WithError(err error) log.Logger {
 	keysvals, msg, stacktrace := kerrs.Extract(err)
-	keysvals = append(keysvals, "msg", msg, "stacktrace", stacktrace)
+	keysvals = append(keysvals, "msg", msg)
+	if len(stacktrace) > 0 {
+		keysvals = append(keysvals, "stacktrace", stacktrace)
+	}
 	l.Logger = level.Error(log.With(l.Logger, keysvals...))
 	return l
 }

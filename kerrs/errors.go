@@ -10,6 +10,8 @@ package kerrs
 import (
 	"fmt"
 
+	"strings"
+
 	merr "github.com/hashicorp/go-multierror"
 	jerrs "github.com/jjeffery/errors"
 	perrs "github.com/pkg/errors"
@@ -19,6 +21,9 @@ import (
 Wrapv should be invoked whenever an error returned from other libraries you imported, and you didn't handle the error, you should wrap it and return it to upper side. By wrapping it, includes stacktrace, and any context values, like your func parameters, So that when it gets logged, It reveal more contexts for developer to know where and what the problem is.
 */
 func Wrapv(err error, message string, keyvals ...interface{}) error {
+	if len(keyvals)%2 == 1 {
+		keyvals = append(keyvals, "<value-missing>")
+	}
 	return perrs.WithStack(jerrs.With(keyvals...).Wrap(err, message))
 }
 
@@ -34,8 +39,12 @@ func Append(err error, errs ...error) error {
 Extract an error of it's context values and message
 */
 func Extract(err error) (kvs []interface{}, msg string, stacktrace string) {
-	msg = ""
-	stacktrace = ""
+	if err == nil {
+		return
+	}
+
+	var msgs []string
+	var stacktraces []string
 	type causer interface {
 		Cause() error
 	}
@@ -47,28 +56,27 @@ func Extract(err error) (kvs []interface{}, msg string, stacktrace string) {
 	var lastMsg interface{}
 
 	for err != nil {
-		_, ok := err.(keyvaluer)
-		if !ok {
-			stacktrace = stacktrace + fmt.Sprintf("%+v\n\n", err)
+		lastMsg = err.Error()
+		cause, isCauser := err.(causer)
+		_, isKeyValuer := err.(keyvaluer)
+
+		if !isKeyValuer && isCauser {
+			stacktraces = append(stacktraces, fmt.Sprintf("%+v", err))
 		}
-		cause, ok := err.(causer)
-		if !ok {
+
+		if !isCauser {
 			break
 		}
 		err = cause.Cause()
 
-		kver, ok := err.(keyvaluer)
-		if ok {
+		kver, isKeyValuer := err.(keyvaluer)
+		if isKeyValuer {
 			thekvs := kver.Keyvals()
 			for i := 1; i < len(thekvs); i += 2 {
 				key := thekvs[i-1]
 				val := thekvs[i]
 				if key == "msg" {
-					if len(msg) == 0 {
-						msg = fmt.Sprintf("%+v", val)
-					} else {
-						msg = fmt.Sprintf("%+v => %+v", msg, val)
-					}
+					msgs = append(msgs, fmt.Sprintf("%+v", val))
 				} else if key == "cause" {
 					lastMsg = val
 				} else {
@@ -77,7 +85,9 @@ func Extract(err error) (kvs []interface{}, msg string, stacktrace string) {
 			}
 		}
 	}
-	msg = fmt.Sprintf("%+v => %+v", msg, lastMsg)
+	msgs = append(msgs, fmt.Sprintf("%+v", lastMsg))
+	msg = strings.Join(msgs, ": ")
+	stacktrace = strings.Join(stacktraces, "\n\n")
 
 	return
 }
