@@ -5,13 +5,12 @@
 * Add Package appkit/kerrs
 * Add `log.WithError` to log to be able to log appkit errors with ease
 
-
-# PR [#33](https://github.com/theplant/appkit/pull/32)
+# PR [#33](https://github.com/theplant/appkit/pull/33)
 
 ## Added
 
-* [`log.NewNopLogger` function](https://github.com/theplant/appkit/blob/add-nop-logger/log/log.go#L60-L64)
-* [`log.Context` function](https://github.com/theplant/appkit/blob/add-nop-logger/log/context.go#L29-L32)
+* [`log.NewNopLogger` function](https://github.com/theplant/appkit/blob/08b478e/log/log.go#L74-L78)
+* [`log.Context` function](https://github.com/theplant/appkit/blob/08b478e/log/context.go#L29-L32)
 
 ## Fixed
 
