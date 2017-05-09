@@ -10,8 +10,8 @@ import (
 
 // Monitor defines an interface for inserting record.
 type Monitor interface {
-	InsertRecord(string, interface{}, map[string]string, time.Time)
-	Count(measurement string, value float64, tags map[string]string)
+	InsertRecord(measurement string, value interface{}, tags map[string]string, fields map[string]interface{}, time time.Time)
+	Count(measurement string, value float64, tags map[string]string, fields map[string]interface{})
 	CountError(measurement string, value float64, err error)
 	CountSimple(measurement string, value float64)
 }
@@ -26,17 +26,21 @@ type logMonitor struct {
 	logger log.Logger
 }
 
-func (l logMonitor) InsertRecord(measurement string, value interface{}, tags map[string]string, time time.Time) {
+func (l logMonitor) InsertRecord(measurement string, value interface{}, tags map[string]string, fields map[string]interface{}, time time.Time) {
+	logger := withTags(l.logger, tags)
+	logger = withFields(logger, fields)
 
-	with(l.logger, tags).Info().Log(
+	logger.Info().Log(
 		"metric", measurement,
 		"value", value,
 		"time", time,
 	)
 }
 
-func (l logMonitor) Count(measurement string, value float64, tags map[string]string) {
-	with(l.logger, tags).Info().Log(
+func (l logMonitor) Count(measurement string, value float64, tags map[string]string, fields map[string]interface{}) {
+	logger := withTags(l.logger, tags)
+	logger = withFields(logger, fields)
+	logger.Info().Log(
 		"metric", measurement,
 		"value", value,
 	)
@@ -56,7 +60,15 @@ func (l logMonitor) CountSimple(measurement string, value float64) {
 	)
 }
 
-func with(logger log.Logger, tags map[string]string) log.Logger {
+func withTags(logger log.Logger, tags map[string]string) log.Logger {
+	t := []interface{}{}
+	for k, v := range tags {
+		t = append(t, k, v)
+	}
+	return logger.With(t...)
+}
+
+func withFields(logger log.Logger, tags map[string]interface{}) log.Logger {
 	t := []interface{}{}
 	for k, v := range tags {
 		t = append(t, k, v)
