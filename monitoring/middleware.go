@@ -28,8 +28,9 @@ func WithMonitor(m Monitor) func(h http.Handler) http.Handler {
 			defer func() {
 				interval := time.Now().Sub(start)
 				go func() {
-					tags := tagsForContext(r)
-					m.InsertRecord("request", float64(interval/time.Millisecond), tags, start)
+					tags := tagsForRequest(r)
+					fields := fieldsForContext(r.Context())
+					m.InsertRecord("request", float64(interval/time.Millisecond), tags, fields, start)
 
 				}()
 			}()
@@ -62,7 +63,7 @@ func ForceContext(ctx context.Context) Monitor {
 	return NewLogMonitor(logger)
 }
 
-func tagsForContext(r *http.Request) map[string]string {
+func tagsForRequest(r *http.Request) map[string]string {
 	path := scrubPath(r.URL.Path)
 	tags := map[string]string{
 		"path":           path,
@@ -70,10 +71,6 @@ func tagsForContext(r *http.Request) map[string]string {
 	}
 
 	ctx := r.Context()
-
-	if reqID, ok := trace.RequestTrace(ctx); ok {
-		tags["req_id"] = fmt.Sprintf("%v", reqID)
-	}
 
 	if status, ok := contexts.HTTPStatus(ctx); ok {
 		tags["response_code"] = strconv.Itoa(status)
@@ -86,6 +83,16 @@ func tagsForContext(r *http.Request) map[string]string {
 	}
 
 	return tags
+}
+
+func fieldsForContext(ctx context.Context) map[string]interface{} {
+	fields := map[string]interface{}{}
+
+	if reqID, ok := trace.RequestTrace(ctx); ok {
+		fields["req_id"] = fmt.Sprintf("%v", reqID)
+	}
+
+	return fields
 }
 
 var idScrubber = regexp.MustCompile("[0-9]+")
