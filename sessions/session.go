@@ -3,10 +3,11 @@ package sessions
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/sessions"
+	"github.com/theplant/appkit/errornotifier"
+	"github.com/theplant/appkit/log"
 )
 
 var sessionStore *sessions.CookieStore
@@ -25,6 +26,7 @@ type SessionConfig struct {
 }
 
 var config *SessionConfig
+var notifier errornotifier.Notifier
 
 func setupSession() {
 	if config.Name == "" {
@@ -51,8 +53,10 @@ const sessionCtxKey sessionContextKey = 0
 
 // GenerateSession GenerateSession middleware generate session store for the whole request lifetime.
 // later session operations should call `GetSession` to get the generated session store
-func GenerateSession(conf *SessionConfig) func(http.Handler) http.Handler {
+func GenerateSession(conf *SessionConfig, logger log.Logger) func(http.Handler) http.Handler {
 	config = conf
+	notifier = errornotifier.NewLogNotifier(logger)
+
 	setupSession()
 
 	return func(h http.Handler) http.Handler {
@@ -83,7 +87,7 @@ func GetSession(w http.ResponseWriter, r *http.Request) *session {
 func (s session) Get(key string) (string, bool) {
 	session, err := sessionStore.Get(s.r, config.Name)
 	if err != nil {
-		fmt.Println(err)
+		notifier.Notify(err, nil)
 		return "", false
 	}
 
@@ -103,7 +107,7 @@ func (s session) Get(key string) (string, bool) {
 func (s session) Put(key, value string) {
 	session, err := sessionStore.Get(s.r, config.Name)
 	if err != nil {
-		fmt.Println(err)
+		notifier.Notify(err, nil)
 		return
 	}
 
@@ -114,7 +118,7 @@ func (s session) Put(key, value string) {
 func (s session) Del(key string) {
 	session, err := sessionStore.Get(s.r, config.Name)
 	if err != nil {
-		fmt.Println(err)
+		notifier.Notify(err, nil)
 		return
 	}
 

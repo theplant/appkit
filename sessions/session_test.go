@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/theplant/appkit/log"
 )
 
 func TestGorillaContextMemoryleak(t *testing.T) {
@@ -44,7 +46,9 @@ func TestGorillaContextMemoryleak(t *testing.T) {
 		Name: "test",
 		Key:  "6bude5uOm9eZV280BjP6f6a5bEj7fg2PWl6GysY68CmXfOv8NFZ9O6ZIpbllQPtr",
 	}
-	handler := GenerateSession(conf)
+	logger := log.Default()
+
+	handler := GenerateSession(conf, logger)
 
 	handler(testHandler).ServeHTTP(respWriter, req)
 }
