@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/gorilla/sessions"
 )
 
 func TestGorillaContextMemoryleak(t *testing.T) {
@@ -19,22 +17,24 @@ func TestGorillaContextMemoryleak(t *testing.T) {
 	}
 
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var originSessionOptions *sessions.Options
+		key, val := "key", "val"
 
 		if se := GetSession(w, r); se != nil {
-			originSessionOptions = se.session.Options
+			se.Put(key, val)
 		} else {
 			t.Errorf("session store not generated and get set in the context")
 		}
 
+		// Call WithContext between two session calls.
+		// To test if the previous value set by first request point is missing by the shallow copy of WithContext
 		const testCtxKey sessionContextKey = 10
 		ctx := context.WithValue(r.Context(), testCtxKey, "tmpVal")
 		r = r.WithContext(ctx)
 
 		if se := GetSession(w, r); se == nil {
 			t.Errorf("session store isn't set in the context")
-		} else if originSessionOptions != se.session.Options {
-			t.Errorf("session changed in one request lifetime")
+		} else if value, _ := se.Get(key); value != val {
+			t.Errorf("session value changed in one request lifetime")
 		}
 	})
 
