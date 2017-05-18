@@ -83,6 +83,10 @@ A basic interface for monitoring request times and other arbitrary data, and rec
 
 Interface for pushing panics and arbitrary errors into error logging systems. Provides implementation for Airbrake monitoring.
 
+# [Sessions](sessions/README.md)
+
+This package is a wrapper of [gorilla/sessions](https://www.github.com/gorilla/sessions) to fix the potential [memory leaking problem](https://qortex.com/theplant#groups/560b63da8d93e34b8500da28/entry/58a297e98d93e316d10328f3).
+
 # Contexts
 
 Context wrappers and http.Handler middleware to setup and use various `context.Context`s.
@@ -98,9 +102,9 @@ Context wrappers and http.Handler middleware to setup and use various `context.C
 
 ## Naming Style
 
-For an "ABC" context: 
+For an "ABC" context:
 
-* `ABC` will extract the "value" from a `context.Context`. Generally returns the value and a `bool` to indicate whether the context actually had any value. 
+* `ABC` will extract the "value" from a `context.Context`. Generally returns the value and a `bool` to indicate whether the context actually had any value.
 * `WithABC` is `http.Handler` middleware that will enable "ABC" in a HTTP handler.
 * `ABCContext` will wrap a `context.Context` and provide a new context that can be passed to `ABC`.
 * `MustGetABC` is a wrapper around `ABC` that will `panic` when `ABC` would return false. Useful when you *need* the context value and the only way you'd handle a missing value would be to `panic`.

@@ -6,11 +6,11 @@ The method is, save the **original request pointer** and doing all later session
 
 ## Usage
 
-First, setup `SessionConfig` with `GenerateSession` middleware to your application like this:
+First, setup `Config` with `WithSession` middleware to your application like this:
 
 ```go
     func Handler(logger log.Logger, mux *http.ServeMux) http.Handler {
-        sessionConf := &sessions.SessionConfig{
+        sessionConf := &sessions.Config{
             Name:   "session name",
             Key:    "session key",
             Secure: true,
@@ -18,7 +18,7 @@ First, setup `SessionConfig` with `GenerateSession` middleware to your applicati
         }
 
         middleware := server.Compose(
-            sessions.GenerateSession(sessionConf),
+            sessions.WithSession(sessionConf),
         )
 
         return middleware(mux)
@@ -30,17 +30,15 @@ Then, You can fetch session from current request's context. The wrapper provides
 Here's an example:
 
 ```go
-    session := sessions.GetSession(c.Writer, c.Request)
+    sessions.Put(c.Request.Context(), "uid", 123)
 
-    session.Put("uid", 123)
+    key, err := sessions.Get(c.Request.Context(), "uid")
+    // => 123, nil
 
-    key, ok := session.Get("uid")
-    // => 123, true
+    session.Del(c.Request.Context(), "uid")
 
-    session.Del("uid")
-
-    key, ok := session.Get("uid")
-    // => "", false
+    key, err := session.Get(c.Request.Context(), "uid")
+    // => "", nil
 ```
 
 ## The reason of the memory leak problem

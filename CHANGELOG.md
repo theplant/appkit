@@ -1,3 +1,7 @@
+# PR [#42](https://github.com/theplant/appkit/pull/42)
+
+* Add Package appkit/sessions
+
 # [Add support for logging fields via monitoring.Monitor (PR#37)](https://github.com/theplant/appkit/pull/37)
 
 ## Breaking changes
