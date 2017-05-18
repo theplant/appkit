@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/theplant/appkit/log"
 )
 
 func TestGorillaContextMemoryleak(t *testing.T) {
@@ -21,10 +19,9 @@ func TestGorillaContextMemoryleak(t *testing.T) {
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key, val := "key", "val"
 
-		if se := GetSession(w, r); se != nil {
-			se.Put(key, val)
-		} else {
-			t.Errorf("session store not generated and get set in the context")
+		err = Put(r.Context(), key, val)
+		if err != nil {
+			t.Errorf("cannot operate session, err: %v", err)
 		}
 
 		// Call WithContext between two session calls.
@@ -33,9 +30,7 @@ func TestGorillaContextMemoryleak(t *testing.T) {
 		ctx := context.WithValue(r.Context(), testCtxKey, "tmpVal")
 		r = r.WithContext(ctx)
 
-		if se := GetSession(w, r); se == nil {
-			t.Errorf("session store isn't set in the context")
-		} else if value, _ := se.Get(key); value != val {
+		if value, _ := Get(r.Context(), key); value != val {
 			t.Errorf("session value changed in one request lifetime")
 		}
 	})
@@ -46,9 +41,8 @@ func TestGorillaContextMemoryleak(t *testing.T) {
 		Name: "test",
 		Key:  "6bude5uOm9eZV280BjP6f6a5bEj7fg2PWl6GysY68CmXfOv8NFZ9O6ZIpbllQPtr",
 	}
-	logger := log.Default()
 
-	handler := WithSession(conf, logger)
+	handler := WithSession(conf)
 
 	handler(testHandler).ServeHTTP(respWriter, req)
 }
