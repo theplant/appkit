@@ -42,13 +42,13 @@ func TestGorillaContextMemoryleak(t *testing.T) {
 
 	respWriter := httptest.NewRecorder()
 
-	conf := &SessionConfig{
+	conf := &Config{
 		Name: "test",
 		Key:  "6bude5uOm9eZV280BjP6f6a5bEj7fg2PWl6GysY68CmXfOv8NFZ9O6ZIpbllQPtr",
 	}
 	logger := log.Default()
 
-	handler := GenerateSession(conf, logger)
+	handler := WithSession(conf, logger)
 
 	handler(testHandler).ServeHTTP(respWriter, req)
 }
