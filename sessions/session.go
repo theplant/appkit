@@ -30,8 +30,8 @@ type sessionContextKey int
 
 const sessionCtxKey sessionContextKey = iota
 
-// WithSession WithSession middleware generate session store for the whole request lifetime.
-// later session operations should call `GetSession` to get the generated session store
+// WithSession is middleware to generate a session store for the whole request lifetime.
+// later session operations should call `Get`/`Put`/`Del` to work with the session
 func WithSession(conf *Config) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +48,7 @@ func WithSession(conf *Config) func(http.Handler) http.Handler {
 	}
 }
 
-// Get Get value of the given key in the session.
+// Get retrieves the value of the given key from the session.
 func Get(ctx context.Context, key string) (string, error) {
 	s, err := getSession(ctx)
 	if err != nil {
@@ -73,7 +73,7 @@ func Get(ctx context.Context, key string) (string, error) {
 	return str, nil
 }
 
-// Put put key-value map into the session
+// Put adds value for key into the session
 func Put(ctx context.Context, key, value string) error {
 	s, err := getSession(ctx)
 	if err != nil {
@@ -90,7 +90,7 @@ func Put(ctx context.Context, key, value string) error {
 	return nil
 }
 
-// Del delete value from the session by given key
+// Del deletes value from the session by given key
 func Del(ctx context.Context, key string) error {
 	s, err := getSession(ctx)
 	if err != nil {
