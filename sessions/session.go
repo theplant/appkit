@@ -33,9 +33,9 @@ const sessionCtxKey sessionContextKey = iota
 // WithSession is middleware to generate a session store for the whole request lifetime.
 // later session operations should call `Get`/`Put`/`Del` to work with the session
 func WithSession(conf *Config) func(http.Handler) http.Handler {
+	store := setupSessionStore(conf)
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			store := setupSessionStore(conf)
 			se := newSession(w, r, conf, store)
 
 			// Record session storer in context
