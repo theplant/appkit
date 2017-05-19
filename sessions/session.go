@@ -3,6 +3,7 @@ package sessions
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -48,7 +49,11 @@ func WithSession(conf *Config) func(http.Handler) http.Handler {
 
 // Get Get value of the given key in the session.
 func Get(ctx context.Context, key string) (string, error) {
-	s := getSession(ctx)
+	s, err := getSession(ctx)
+	if err != nil {
+		return "", err
+	}
+
 	session, err := s.store.Get(s.r, s.config.Name)
 	if err != nil {
 		return "", err
@@ -69,7 +74,11 @@ func Get(ctx context.Context, key string) (string, error) {
 
 // Put put key-value map into the session
 func Put(ctx context.Context, key, value string) error {
-	s := getSession(ctx)
+	s, err := getSession(ctx)
+	if err != nil {
+		return err
+	}
+
 	session, err := s.store.Get(s.r, s.config.Name)
 	if err != nil {
 		return err
@@ -82,7 +91,11 @@ func Put(ctx context.Context, key, value string) error {
 
 // Del delete value from the session by given key
 func Del(ctx context.Context, key string) error {
-	s := getSession(ctx)
+	s, err := getSession(ctx)
+	if err != nil {
+		return err
+	}
+
 	session, err := s.store.Get(s.r, s.config.Name)
 	if err != nil {
 		return err
@@ -119,10 +132,10 @@ func newSession(w http.ResponseWriter, r *http.Request, config *Config, sessionS
 	return &session{w, r, config, sessionStore}
 }
 
-func getSession(ctx context.Context) *session {
+func getSession(ctx context.Context) (*session, error) {
 	if se, ok := ctx.Value(sessionCtxKey).(*session); ok {
-		return se
+		return se, nil
 	}
 
-	panic("Cannot get session in the request, please make sure the WithSession middleware has been executed before calling this function.")
+	return nil, errors.New("cannot get session from the context, please make sure the WithSession middleware has been executed before calling this function")
 }
