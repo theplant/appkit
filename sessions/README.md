@@ -38,7 +38,7 @@ Here's an example:
     session.Del(c.Request.Context(), "uid")
 
     key, err := session.Get(c.Request.Context(), "uid")
-    // => "", nil
+    // => "", "Cannot find value for: 'uid'"
 ```
 
 ## The reason of the memory leak problem
