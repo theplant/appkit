@@ -3,9 +3,10 @@ package sessions
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/pkg/errors"
 
 	"github.com/gorilla/sessions"
 )
@@ -56,7 +57,7 @@ func Get(ctx context.Context, key string) (string, error) {
 
 	session, err := s.store.Get(s.r, s.config.Name)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "cannot get key %v from session", key)
 	}
 
 	strInf, ok := session.Values[key]
@@ -81,7 +82,7 @@ func Put(ctx context.Context, key, value string) error {
 
 	session, err := s.store.Get(s.r, s.config.Name)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "cannot put key %v in to session", key)
 	}
 
 	session.Values[key] = value
@@ -98,7 +99,7 @@ func Del(ctx context.Context, key string) error {
 
 	session, err := s.store.Get(s.r, s.config.Name)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "cannot delete key %v from session", key)
 	}
 
 	delete(session.Values, key)
