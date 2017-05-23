@@ -59,6 +59,10 @@ func (l Logger) Warn() log.Logger {
 }
 
 func Default() Logger {
+	if len(os.Getenv("APPKIT_HUMAN_LOG")) > 0 {
+		return Human()
+	}
+
 	var timer log.Valuer = func() interface{} { return time.Now().Format(time.RFC3339Nano) }
 
 	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))

@@ -82,3 +82,13 @@ func cleanStacktrace(stacktrace string) (cleantrace string) {
 	cleantrace = strings.Join(lines, "\n")
 	return
 }
+
+func TestHuman(t *testing.T) {
+	l := log.Human()
+	err := l.WithError(kerrs.Wrapv(errors.New("original error"), "wrapped message", "code", 2000)).Log()
+	if err != nil {
+		t.Error(err)
+	}
+
+	l.Info().Log("msg", "hello world", "order_code", "111222", "customer_id", "ABCDEFG")
+}
