@@ -13,7 +13,7 @@ import (
 	"github.com/theplant/appkit/kerrs"
 )
 
-const HumanLogEnvName = "APPKIT_LOG_HUMAN"
+const humanLogEnvName = "APPKIT_LOG_HUMAN"
 
 type Logger struct {
 	log.Logger
@@ -63,7 +63,7 @@ func (l Logger) Warn() log.Logger {
 }
 
 func Default() Logger {
-	human := strings.ToLower(os.Getenv(HumanLogEnvName))
+	human := strings.ToLower(os.Getenv(humanLogEnvName))
 	if len(human) > 0 && human != "false" && human != "0" {
 		return Human()
 	}
