@@ -20,7 +20,7 @@ func Human() Logger {
 		log.LoggerFunc(func(values ...interface{}) (err error) {
 			var msg, level, stacktrace, sql, sqlValues interface{}
 			var others []interface{}
-			var isSql bool
+			var isSQL bool
 
 			for i := 1; i < len(values); i += 2 {
 				key := values[i-1]
@@ -42,11 +42,11 @@ func Human() Logger {
 
 				if key == "query" {
 					sql = val
-					isSql = true
+					isSQL = true
 					continue
 				}
 
-				if isSql && key == "values" {
+				if isSQL && key == "values" {
 					sqlValues = val
 					continue
 				}
