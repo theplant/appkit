@@ -18,8 +18,10 @@ func Human() Logger {
 	l := log.NewSyncWriter(os.Stdout)
 	lg := Logger{
 		log.LoggerFunc(func(values ...interface{}) (err error) {
-			var msg, level, stacktrace interface{}
+			var msg, level, stacktrace, sql, sqlValues interface{}
 			var others []interface{}
+			var isSql bool
+
 			for i := 1; i < len(values); i += 2 {
 				key := values[i-1]
 				val := values[i]
@@ -35,6 +37,17 @@ func Human() Logger {
 
 				if key == "stacktrace" {
 					stacktrace = val
+					continue
+				}
+
+				if key == "query" {
+					sql = val
+					isSql = true
+					continue
+				}
+
+				if isSql && key == "values" {
+					sqlValues = val
 					continue
 				}
 
@@ -65,6 +78,12 @@ func Human() Logger {
 			pvals = append(pvals, others...)
 			if stacktrace != nil {
 				pvals = append(pvals, fmt.Sprintf("\n%s", stacktrace), "\n")
+			}
+			if sql != nil {
+				pvals = append(pvals, fmt.Sprintf("\n\t%s", sql), "\n")
+				if sqlValues != nil {
+					pvals = append(pvals, fmt.Sprintf("\t\033[34m%s\033[0m=%s", "values", sqlValues), "\n")
+				}
 			}
 			fmt.Fprintln(l, pvals...)
 			return

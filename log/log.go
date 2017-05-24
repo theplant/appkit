@@ -127,7 +127,12 @@ func sqlLog(l Logger, dur time.Duration, query string, values []interface{}) {
 		logger = l.Info()
 	}
 
-	logger.Log("query_us", int64(dur/time.Microsecond), "query", query, "values", fmt.Sprintf("%+v", values))
+	args := []interface{}{"query_us", int64(dur / time.Microsecond), "query", query}
+	if len(values) > 0 {
+		args = append(args, "values", fmt.Sprintf("%+v", values))
+	}
+
+	logger.Log(args...)
 }
 
 func logLog(l Logger, values ...interface{}) {
