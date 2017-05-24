@@ -91,4 +91,25 @@ func TestHuman(t *testing.T) {
 	}
 
 	l.Info().Log("msg", "hello world", "order_code", "111222", "customer_id", "ABCDEFG")
+
+	l.Debug().Log(
+		"msg", fmt.Sprintf("auto-migrating %T", "table 1"),
+		"table", "felix",
+	)
+	l.Info().Log(
+		"msg", fmt.Sprintf("auto-migrating %T", "table 1"),
+		"table", "felix",
+	)
+	l.Warn().Log(
+		"msg", fmt.Sprintf("auto-migrating %T", "table 1"),
+		"table", "felix",
+	)
+	l.Error().Log(
+		"msg", fmt.Sprintf("auto-migrating %T", "table 1"),
+		"table", "felix",
+	)
+	l.Crit().Log(
+		"msg", fmt.Sprintf("auto-migrating %T", "table 1"),
+		"table", "felix",
+	)
 }

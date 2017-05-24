@@ -18,78 +18,109 @@ func Human() Logger {
 	l := log.NewSyncWriter(os.Stdout)
 	lg := Logger{
 		log.LoggerFunc(func(values ...interface{}) (err error) {
-			var msg, level, stacktrace, sql, sqlValues interface{}
-			var others []interface{}
-			var isSQL bool
-
-			for i := 1; i < len(values); i += 2 {
-				key := values[i-1]
-				val := values[i]
-				if key == "msg" {
-					msg = val
-					continue
-				}
-
-				if key == "level" {
-					level = val
-					continue
-				}
-
-				if key == "stacktrace" {
-					stacktrace = val
-					continue
-				}
-
-				if key == "query" {
-					sql = val
-					isSQL = true
-					continue
-				}
-
-				if isSQL && key == "values" {
-					sqlValues = val
-					continue
-				}
-
-				others = append(others, fmt.Sprintf("\033[34m%+v\033[0m=%+v", key, val))
-			}
-
-			now := time.Now().Format("15:04:05.9999")
-			var pvals = []interface{}{fmt.Sprintf("\033[36m%s\033[0m", now)}
-
-			if msg != nil {
-				colour := "37"
-				level = fmt.Sprintf("%+v", level)
-				switch level {
-				case "crit":
-					colour = "35"
-				case "error":
-					colour = "31"
-				case "warn":
-					colour = "33"
-				case "info":
-					colour = "32"
-				case "debug":
-					colour = "30"
-				}
-				pvals = append(pvals, fmt.Sprintf("\033[%sm%s\033[0m", colour, msg))
-			}
-
-			pvals = append(pvals, others...)
-			if stacktrace != nil {
-				pvals = append(pvals, fmt.Sprintf("\n%s", stacktrace), "\n")
-			}
-			if sql != nil {
-				pvals = append(pvals, fmt.Sprintf("\n\t%s", sql), "\n")
-				if sqlValues != nil {
-					pvals = append(pvals, fmt.Sprintf("\t\033[34m%s\033[0m=%s", "values", sqlValues), "\n")
-				}
-			}
-			fmt.Fprintln(l, pvals...)
+			fmt.Fprint(l, PrettyFormat(values...))
 			return
 		}),
 	}
+	var timer log.Valuer = func() interface{} { return time.Now().Format("15:04:05.99") }
+	lg = lg.With("ts", timer)
+
 	slog.SetOutput(log.NewStdlibAdapter(lg))
 
 	return lg
+}
+
+/*
+PrettyFormat accepts log values and returns pretty output string
+*/
+func PrettyFormat(values ...interface{}) (r string) {
+	var ts, msg, level, stacktrace, sql, sqlValues interface{}
+	var shorts []interface{}
+	var longs []interface{}
+	var isSQL bool
+
+	for i := 1; i < len(values); i += 2 {
+		key := values[i-1]
+		val := values[i]
+		if key == "ts" {
+			ts = val
+			continue
+		}
+		if key == "msg" {
+			msg = val
+			continue
+		}
+
+		if key == "level" {
+			level = val
+			continue
+		}
+
+		if key == "stacktrace" {
+			stacktrace = val
+			continue
+		}
+
+		if key == "query" {
+			sql = val
+			isSQL = true
+			continue
+		}
+
+		if isSQL && key == "values" {
+			sqlValues = val
+			continue
+		}
+
+		if len(fmt.Sprintf("%+v", val)) > 50 {
+			longs = append(longs, fmt.Sprintf("\033[34m%+v\033[39m=%+v", key, val))
+			continue
+		}
+
+		shorts = append(shorts, fmt.Sprintf("\033[34m%+v\033[39m=%+v", key, val))
+	}
+
+	var pvals = []interface{}{}
+	if ts != nil {
+		pvals = append(pvals, fmt.Sprintf("\033[36m%s\033[0m", ts))
+	}
+
+	if msg != nil {
+		color := "39"
+		level = fmt.Sprintf("%+v", level)
+		switch level {
+		case "crit":
+			color = "35"
+		case "error":
+			color = "31"
+		case "warn":
+			color = "33"
+		case "info":
+			color = "32"
+		case "debug":
+			color = "37"
+		}
+		pvals = append(pvals, fmt.Sprintf("\033[%sm%s", color, msg))
+	}
+
+	pvals = append(pvals, shorts...)
+	if len(longs) > 0 {
+		pvals = append(pvals, "\n")
+		for _, long := range longs {
+			pvals = append(pvals, "          ", long, "\n")
+		}
+	}
+
+	if sql != nil {
+		pvals = append(pvals, fmt.Sprintf("\n            %s", sql), "\n")
+		if sqlValues != nil {
+			pvals = append(pvals, fmt.Sprintf("           \033[34m%s\033[0m=%s", "values", sqlValues), "\n")
+		}
+	}
+
+	if stacktrace != nil {
+		pvals = append(pvals, fmt.Sprintf("\n%s", stacktrace), "\n")
+	}
+
+	return fmt.Sprintln(pvals...)
 }
