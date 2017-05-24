@@ -11,6 +11,9 @@ import (
 	"github.com/go-kit/kit/log"
 )
 
+/*
+Human is for create a Logger that print human friendly log
+*/
 func Human() Logger {
 	l := log.NewSyncWriter(os.Stdout)
 	lg := Logger{

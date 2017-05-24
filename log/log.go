@@ -6,10 +6,14 @@ import (
 	"os"
 	"time"
 
+	"strings"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/theplant/appkit/kerrs"
 )
+
+const HumanLogEnvName = "APPKIT_LOG_HUMAN"
 
 type Logger struct {
 	log.Logger
@@ -59,7 +63,8 @@ func (l Logger) Warn() log.Logger {
 }
 
 func Default() Logger {
-	if len(os.Getenv("APPKIT_HUMAN_LOG")) > 0 {
+	human := strings.ToLower(os.Getenv(HumanLogEnvName))
+	if len(human) > 0 && human != "false" && human != "0" {
 		return Human()
 	}
 
