@@ -98,7 +98,7 @@ func PrettyFormat(values ...interface{}) (r string) {
 		case "info":
 			color = "32"
 		case "debug":
-			color = "37"
+			color = "90"
 		}
 		pvals = append(pvals, fmt.Sprintf("\033[%sm%s", color, msg))
 	}
