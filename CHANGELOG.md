@@ -1,3 +1,19 @@
+# PR [#42](https://github.com/theplant/appkit/pull/42)
+
+* Add Package appkit/sessions
+
+# [Add support for logging fields via monitoring.Monitor (PR#37)](https://github.com/theplant/appkit/pull/37)
+
+## Breaking changes
+
+* [Changed monitoring interface](https://github.com/theplant/appkit/pull/37/commits/5dde9fa2bc77527f9760feecdda762864fa0572c#diff-2b8f43b8889cf5d451e1b7e74a89ae74L62) to accept data fields in addition to tags.
+
+## Changed behaviour
+
+* Monitoring middleware now logs `req_id` as a field, rather than a
+tag, to avoid generating InfluxDB series with immense
+[cardinality](https://docs.influxdata.com/influxdb/v1.2/concepts/glossary/#series-cardinality).
+
 # PR [#35](https://github.com/theplant/appkit/pull/35)
 
 ## Added

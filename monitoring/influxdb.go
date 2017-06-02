@@ -85,18 +85,22 @@ type influxdbMonitor struct {
 }
 
 // InsertRecord part of monitor.Monitor.
-func (im influxdbMonitor) InsertRecord(measurement string, value interface{}, tags map[string]string, at time.Time) {
+func (im influxdbMonitor) InsertRecord(measurement string, value interface{}, tags map[string]string, fields map[string]interface{}, at time.Time) {
+	if fields == nil {
+		fields = map[string]interface{}{}
+	}
+
+	fields["value"] = value
+
 	// Ignore response, we only care about write errors
 	_, err := im.client.Write(influxdb.BatchPoints{
 		Database: im.database,
 		Points: []influxdb.Point{
 			{
 				Measurement: measurement,
-				Fields: map[string]interface{}{
-					"value": value,
-				},
-				Tags: tags,
-				Time: at,
+				Fields:      fields,
+				Tags:        tags,
+				Time:        at,
 			},
 		},
 	})
@@ -114,18 +118,18 @@ func (im influxdbMonitor) InsertRecord(measurement string, value interface{}, ta
 	}
 }
 
-func (im influxdbMonitor) Count(measurement string, value float64, tags map[string]string) {
-	im.InsertRecord(measurement, value, tags, time.Now())
+func (im influxdbMonitor) Count(measurement string, value float64, tags map[string]string, fields map[string]interface{}) {
+	im.InsertRecord(measurement, value, tags, fields, time.Now())
 }
 
 // CountError logs a value in measurement, with the given error's
 // message stored in an `error` tag.
 func (im influxdbMonitor) CountError(measurement string, value float64, err error) {
 	data := map[string]string{"error": err.Error()}
-	im.Count(measurement, value, data)
+	im.Count(measurement, value, data, nil)
 }
 
 // CountSimple logs a value in measurement (with no tags).
 func (im influxdbMonitor) CountSimple(measurement string, value float64) {
-	im.Count(measurement, value, nil)
+	im.Count(measurement, value, nil, nil)
 }

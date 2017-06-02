@@ -59,8 +59,8 @@ To record other metrics, eg counting subscriptions, measuring time of API calls 
 
 ```
 type Monitor interface {
-	InsertRecord(string, interface{}, map[string]string, time.Time)
-	Count(measurement string, value float64, tags map[string]string)
+	InsertRecord(measurement string, value interface{}, tags map[string]string, fields map[string]interface{}, time time.Time)
+	Count(measurement string, value float64, tags map[string]string, fields map[string]interface{})
 	CountError(measurement string, value float64, err error)
 	CountSimple(measurement string, value float64)
 }
