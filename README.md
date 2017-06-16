@@ -51,6 +51,11 @@ Provide a logger that doesn't do anything. This is quite useful for testing.
 logger := log.NewNopLogger()
 ```
 
+## Set flag `APPKIT_LOG_HUMAN` for better dev experience
+
+`export APPKIT_LOG_HUMAN=true` Will make the logger outputs to a format that is easily to read for developers.
+
+
 # Server
 
 ## HTTP Listener
