@@ -1,3 +1,8 @@
+# PR [#43](https://github.com/theplant/appkit/pull/43)
+
+* Add `APPKIT_LOG_HUMAN` environment flag to output logs with better formatted for human
+
+
 # PR [#42](https://github.com/theplant/appkit/pull/42)
 
 * Add Package appkit/sessions

@@ -6,10 +6,14 @@ import (
 	"os"
 	"time"
 
+	"strings"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/theplant/appkit/kerrs"
 )
+
+const humanLogEnvName = "APPKIT_LOG_HUMAN"
 
 type Logger struct {
 	log.Logger
@@ -59,6 +63,11 @@ func (l Logger) Warn() log.Logger {
 }
 
 func Default() Logger {
+	human := strings.ToLower(os.Getenv(humanLogEnvName))
+	if len(human) > 0 && human != "false" && human != "0" {
+		return Human()
+	}
+
 	var timer log.Valuer = func() interface{} { return time.Now().Format(time.RFC3339Nano) }
 
 	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
@@ -118,7 +127,12 @@ func sqlLog(l Logger, dur time.Duration, query string, values []interface{}) {
 		logger = l.Info()
 	}
 
-	logger.Log("query_us", int64(dur/time.Microsecond), "query", query, "values", fmt.Sprintf("%+v", values))
+	args := []interface{}{"query_us", int64(dur / time.Microsecond), "query", query}
+	if len(values) > 0 {
+		args = append(args, "values", fmt.Sprintf("%+v", values))
+	}
+
+	logger.Log(args...)
 }
 
 func logLog(l Logger, values ...interface{}) {
