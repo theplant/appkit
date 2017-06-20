@@ -68,7 +68,7 @@ func (n *logNotifier) Notify(val interface{}, req *http.Request) error {
 	return logger.Error().Log(
 		"err", val,
 		"msg", fmt.Sprintf("error notification: %v", val),
-		"stack", fmt.Sprintf("%s", debug.Stack()),
+		"stacktrace", string(debug.Stack()),
 	)
 }
 
