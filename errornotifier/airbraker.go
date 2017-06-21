@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 
 	"github.com/theplant/appkit/log"
 	gobrake "gopkg.in/airbrake/gobrake.v1"
@@ -67,6 +68,7 @@ func (n *logNotifier) Notify(val interface{}, req *http.Request) error {
 	return logger.Error().Log(
 		"err", val,
 		"msg", fmt.Sprintf("error notification: %v", val),
+		"stacktrace", string(debug.Stack()),
 	)
 }
 
