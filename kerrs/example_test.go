@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"go/build"
-
 	"bytes"
 
 	"github.com/theplant/appkit/kerrs"
@@ -20,12 +18,10 @@ func ExampleWrapv_errors() {
 	// fmt.Printf("%+v", err)
 	err2 := kerrs.Wrapv(err1, "more explain about the error", "morecontext", "999")
 
-	actual := cleanStacktrace(fmt.Sprintf("\n%+v\n", err2))
-	expected := `
-more explain about the error morecontext=999: wrong code=12123 value=12312: hi, I am an error
-github.com/theplant/appkit/kerrs.Wrapv
-	github.com/theplant/appkit/kerrs/errors.go:27
-github.com/theplant/appkit/kerrs_test.ExampleWrapv_errors`
+	actual := cleanStacktrace(fmt.Sprintf("%+v\n", err2))
+	expected := `more explain about the error morecontext=999: wrong code=12123 value=12312: hi, I am an error
+<stacktrace>
+`
 
 	diff := testingutils.PrettyJsonDiff(expected, actual)
 	fmt.Println(diff)
@@ -88,10 +84,8 @@ keyvals: []interface {}{"request_id", "T1212123129983", "product_name", "iphone"
 
 stacktrace:
 in regexp request_id=T1212123129983: more explain about the error product_name=iphone color=red: wrong code=12123 value=12312: hi, I am an error
-github.com/theplant/appkit/kerrs.Wrapv
-	github.com/theplant/appkit/kerrs/errors.go:27
-github.com/theplant/appkit/kerrs_test.ExampleExtract_errors
-	github.com/theplant/appkit/kerrs/example_test.go:76`
+<stacktrace>
+`
 
 	diff := testingutils.PrettyJsonDiff(expected, actual.String())
 	fmt.Println(diff)
@@ -101,7 +95,7 @@ github.com/theplant/appkit/kerrs_test.ExampleExtract_errors
 }
 
 func cleanStacktrace(stacktrace string) (cleantrace string) {
-	cleantrace = strings.Replace(stacktrace, build.Default.GOPATH+"/src/", "", -1)
-	cleantrace = strings.Join(strings.Split(cleantrace, "\n")[0:5], "\n")
+	cleantrace = strings.Split(stacktrace, "\n")[0]
+	cleantrace = cleantrace + "\n<stacktrace>\n"
 	return
 }
