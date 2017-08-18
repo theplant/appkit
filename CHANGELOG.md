@@ -1,3 +1,7 @@
+# PR [#2](https://github.com/theplant/appkit/pull/2)
+
+* Add `encryptedbox` package
+
 # PR [#43](https://github.com/theplant/appkit/pull/43)
 
 * Add `APPKIT_LOG_HUMAN` environment flag to output logs with better formatted for human
