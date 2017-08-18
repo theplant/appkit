@@ -103,5 +103,6 @@ github.com/theplant/appkit/kerrs_test.ExampleExtract_errors
 func cleanStacktrace(stacktrace string) (cleantrace string) {
 	cleantrace = strings.Replace(stacktrace, build.Default.GOPATH+"/src/", "", -1)
 	cleantrace = strings.Join(strings.Split(cleantrace, "\n")[0:5], "\n")
+	cleantrace = strings.Replace(cleantrace, "_test/_obj_test/", "", -1)
 	return
 }
