@@ -113,3 +113,9 @@ For an "ABC" context:
 * `WithABC` is `http.Handler` middleware that will enable "ABC" in a HTTP handler.
 * `ABCContext` will wrap a `context.Context` and provide a new context that can be passed to `ABC`.
 * `MustGetABC` is a wrapper around `ABC` that will `panic` when `ABC` would return false. Useful when you *need* the context value and the only way you'd handle a missing value would be to `panic`.
+
+# [Encrypted Box](encryptedbox/README.md)
+
+Secret Box provides a simple interface for encryption of data for storage at rest.
+
+It is implemented as a simple wrapper around `golang.org/x/crypto/nacl/secretbox` that takes care of handling the nonce.
