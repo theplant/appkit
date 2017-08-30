@@ -24,6 +24,9 @@ func (l Logger) With(keysvals ...interface{}) Logger {
 	return l
 }
 
+/*
+WrapError can wrap error with kerrs to structured log
+*/
 func (l Logger) WrapError(err error) log.Logger {
 	if err == nil {
 		return l

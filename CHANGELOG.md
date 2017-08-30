@@ -1,3 +1,7 @@
+# PR [#6](https://github.com/theplant/appkit/pull/6)
+
+* Add `log.WrapError` to `log`
+
 # PR [#2](https://github.com/theplant/appkit/pull/2)
 
 * Add `encryptedbox` package
