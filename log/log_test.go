@@ -90,6 +90,8 @@ func TestHuman(t *testing.T) {
 		t.Error(err)
 	}
 
+	l.WrapError(errors.New("hello error")).Log("msg", "there is a big error")
+
 	l.Info().Log("msg", "hello world", "order_code", "111222", "customer_id", "ABCDEFG")
 
 	l.Debug().Log(
