@@ -26,7 +26,7 @@ func (l Logger) With(keysvals ...interface{}) Logger {
 
 func (l Logger) WrapError(err error) log.Logger {
 	if err == nil {
-		return nil
+		return l
 	}
 	return l.WithError(kerrs.Wrapv(err, ""))
 }
