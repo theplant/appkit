@@ -12,6 +12,8 @@ import (
 
 	klog "github.com/go-kit/kit/log"
 
+	stdl "log"
+
 	"github.com/theplant/appkit/kerrs"
 	"github.com/theplant/appkit/log"
 	"github.com/theplant/testingutils"
@@ -84,11 +86,15 @@ func cleanStacktrace(stacktrace string) (cleantrace string) {
 }
 
 func TestHuman(t *testing.T) {
-	l := log.Human()
+	l := log.Default()
 	err := l.WithError(kerrs.Wrapv(errors.New("original error"), "wrapped message", "code", 2000)).Log()
 	if err != nil {
 		t.Error(err)
 	}
+
+	log.SetStdLogOutput(l)
+
+	stdl.Println("hello from go standard log")
 
 	l.Info().Log("msg", "hello world", "order_code", "111222", "customer_id", "ABCDEFG")
 
