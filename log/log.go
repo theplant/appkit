@@ -8,6 +8,8 @@ import (
 
 	"strings"
 
+	stdl "log"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/theplant/appkit/kerrs"
@@ -17,6 +19,13 @@ const humanLogEnvName = "APPKIT_LOG_HUMAN"
 
 type Logger struct {
 	log.Logger
+}
+
+/*
+SetStdLogOutput redirect go standard log into this logger
+*/
+func SetStdLogOutput(logger Logger) {
+	stdl.SetOutput(log.NewStdlibAdapter(logger))
 }
 
 func (l Logger) With(keysvals ...interface{}) Logger {
@@ -75,7 +84,7 @@ func Default() Logger {
 	lg := Logger{
 		Logger: l,
 	}
-	lg = lg.With("ts", timer, "caller", log.DefaultCaller)
+	lg = lg.With("ts", timer, "caller", log.Caller(4))
 
 	return lg
 }
