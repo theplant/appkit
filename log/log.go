@@ -75,7 +75,7 @@ func Default() Logger {
 	lg := Logger{
 		Logger: l,
 	}
-	lg = lg.With("ts", timer, "caller", log.DefaultCaller)
+	lg = lg.With("ts", timer, "caller", log.Caller(4))
 
 	return lg
 }
