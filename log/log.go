@@ -8,6 +8,8 @@ import (
 
 	"strings"
 
+	stdl "log"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/theplant/appkit/kerrs"
@@ -19,13 +21,20 @@ type Logger struct {
 	log.Logger
 }
 
+/*
+SetStdLogOutput redirect go standard log into this logger
+*/
+func SetStdLogOutput(logger Logger) {
+	stdl.SetOutput(log.NewStdlibAdapter(logger))
+}
+
 func (l Logger) With(keysvals ...interface{}) Logger {
 	l.Logger = log.With(l.Logger, keysvals...)
 	return l
 }
 
 /*
-WrapError can wrap error with kerrs to structured log
+WrapError wrap an original error to kerrs and add to the structured log
 */
 func (l Logger) WrapError(err error) log.Logger {
 	if err == nil {
@@ -35,7 +44,7 @@ func (l Logger) WrapError(err error) log.Logger {
 }
 
 /*
-WithError can log kerrs type of err to structured log
+WithError add an err to structured log
 */
 func (l Logger) WithError(err error) log.Logger {
 	keysvals, msg, stacktrace := kerrs.Extract(err)
@@ -85,7 +94,7 @@ func Default() Logger {
 	lg := Logger{
 		Logger: l,
 	}
-	lg = lg.With("ts", timer, "caller", log.DefaultCaller)
+	lg = lg.With("ts", timer, "caller", log.Caller(4))
 
 	return lg
 }
