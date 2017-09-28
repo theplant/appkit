@@ -94,6 +94,8 @@ func TestHuman(t *testing.T) {
 
 	log.SetStdLogOutput(l)
 
+	l.WrapError(errors.New("hello error")).Log("msg", "there is a big error")
+
 	stdl.Println("hello from go standard log")
 
 	l.Info().Log("msg", "hello world", "order_code", "111222", "customer_id", "ABCDEFG")

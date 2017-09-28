@@ -34,7 +34,17 @@ func (l Logger) With(keysvals ...interface{}) Logger {
 }
 
 /*
-WithError can log kerrs type of err to structured log
+WrapError wrap an original error to kerrs and add to the structured log
+*/
+func (l Logger) WrapError(err error) log.Logger {
+	if err == nil {
+		return l
+	}
+	return l.WithError(kerrs.Wrapv(err, ""))
+}
+
+/*
+WithError add an err to structured log
 */
 func (l Logger) WithError(err error) log.Logger {
 	keysvals, msg, stacktrace := kerrs.Extract(err)
