@@ -1,3 +1,7 @@
+# PR [#9](https://github.com/theplant/appkit/pull/9)
+
+* Fix `contexts.HTTPStatus` to assume that the response is `http.StatusOK`, rather than `0`.
+
 # PR [#6](https://github.com/theplant/appkit/pull/6)
 
 * Add `log.WrapError` to `log`
