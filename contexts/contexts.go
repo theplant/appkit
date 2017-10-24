@@ -33,7 +33,7 @@ func HTTPStatus(c context.Context) (int, bool) {
 	status := http.StatusOK // Default
 	sw, ok := c.Value(statusKey).(*statusWriter)
 
-	if ok {
+	if ok && sw.status != 0 {
 		status = sw.status
 	}
 
