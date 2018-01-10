@@ -34,12 +34,19 @@ func main() {
 		line, err := buf.ReadBytes('\n')
 
 		data = make(kvs, 0)
+		valLen := 0
 		if err := logfmt.Unmarshal(line, &data); err == nil {
 			r := []interface{}{}
 			for _, d := range data {
 				r = append(r, d.key, d.val)
+				valLen += len(d.val.(string))
 			}
-			fmt.Print(log.PrettyFormat(r...))
+
+			if valLen > 0 {
+				fmt.Print(log.PrettyFormat(r...))
+			} else {
+				fmt.Print(string(line))
+			}
 		} else {
 			fmt.Println(string(line))
 			fmt.Println("error parsing log output", err)
