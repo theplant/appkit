@@ -3,6 +3,7 @@ package log
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	slog "log"
 
@@ -33,7 +34,7 @@ func Human() Logger {
 /*
 PrettyFormat accepts log values and returns pretty output string
 */
-func PrettyFormat(values ...interface{}) (r string) {
+func PrettyFormat_(values ...interface{}) (r string) {
 	var ts, msg, level, stacktrace, sql, sqlValues interface{}
 	var shorts []interface{}
 	var longs []interface{}
@@ -123,4 +124,79 @@ func PrettyFormat(values ...interface{}) (r string) {
 	}
 
 	return fmt.Sprintln(pvals...)
+}
+
+func ex(r map[string]interface{}, f string) (interface{}, bool) {
+	v, ok := r[f]
+	delete(r, f)
+	//	if ok && len(v) > 0 {
+	//		return strings.Join(v, "."), true
+	//	}
+	return v, ok
+
+}
+
+func mapVals(values ...interface{}) map[string]interface{} {
+	m := map[string]interface{}{}
+	for i, key := range values {
+		if i%2 == 1 {
+			continue
+		}
+
+		m[key.(string)] = values[i+1]
+	}
+	return m
+}
+
+/*
+PrettyFormat accepts log values and returns pretty output string
+*/
+func PrettyFormat(values ...interface{}) string {
+	r := mapVals(values...)
+
+	level, ok := ex(r, "level")
+	if !ok {
+		level = "<none>"
+	}
+
+	ts, ok := ex(r, "ts")
+	var tsStr string
+	if ok {
+		tsStr = ts.(string)
+	} else {
+		tsStr = strings.Repeat(" ", len(time.StampMilli))
+	}
+
+	msgI, ok := ex(r, "msg")
+	msg := "<no msg>"
+	if ok {
+		m, ok := msgI.(string)
+		if ok && len(m) > 0 {
+			msg = m
+		}
+	}
+
+	colour := "37"
+	switch level {
+	case "crit":
+		colour = "35"
+	case "error":
+		colour = "31"
+	case "warn":
+		colour = "33"
+	case "info":
+		colour = "32"
+	case "debug":
+		colour = "30"
+	}
+
+	output := []string{fmt.Sprintf("\033[%s;1m%s: %s\033[0m (%s)", colour, tsStr, msg, level)}
+
+	for k, v := range r {
+		output = append(output, fmt.Sprintf("  %s=%v", k, v))
+	}
+
+	output = append(output, "", "")
+
+	return strings.Join(output, "\n")
 }
