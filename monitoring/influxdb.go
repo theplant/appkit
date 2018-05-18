@@ -41,12 +41,18 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		return nil, errors.Errorf("influxdb monitoring url %v not database", monitorURL)
 	}
 
-	// Skips identify of "whether password is set" as password not a must
-	password, _ := u.User.Password()
+	username := ""
+	password := ""
+
+	if u.User != nil {
+		username = u.User.Username()
+		// Skips identify of "whether password is set" as password not a must
+		password, _ = u.User.Password()
+	}
 
 	httpConfig := influxdb.HTTPConfig{
-		Addr:     fmt.Sprintf("%s://%s:%s", u.Scheme, u.Hostname(), u.Port()),
-		Username: u.User.Username(),
+		Addr:     fmt.Sprintf("%s://%s", u.Scheme, u.Host),
+		Username: username,
 		Password: password,
 	}
 
@@ -64,7 +70,7 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 
 	logger = logger.With(
 		"scheme", u.Scheme,
-		"username", u.User.Username(),
+		"username", username,
 		"database", monitor.database,
 		"host", u.Host,
 	)
@@ -89,7 +95,7 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 	}()
 
 	logger.Info().Log(
-		"msg", fmt.Sprintf("influxdb instrumentation writing to %s://%s@%s/%s", u.Scheme, u.User.Username(), u.Host, monitor.database),
+		"msg", fmt.Sprintf("influxdb instrumentation writing to %s://%s@%s/%s", u.Scheme, username, u.Host, monitor.database),
 	)
 
 	return &monitor, nil
