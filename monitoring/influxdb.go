@@ -31,12 +31,8 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		return nil, errors.Wrapf(err, "couldn't parse influxdb url %v", monitorURL)
 	} else if !u.IsAbs() {
 		return nil, errors.Errorf("influxdb monitoring url %v not absolute url", monitorURL)
-	}
-
-	password, ok := u.User.Password()
-
-	if !ok {
-		return nil, errors.Errorf("influxdb monitoring url %v not password", monitorURL)
+	} else if u.Scheme != "http" && u.Scheme != "https" {
+		return nil, errors.Errorf("influxdb monitoring url %v not scheme", monitorURL)
 	}
 
 	database := strings.TrimLeft(u.Path, "/")
@@ -44,6 +40,9 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 	if strings.TrimSpace(database) == "" {
 		return nil, errors.Errorf("influxdb monitoring url %v not database", monitorURL)
 	}
+
+	// Skips identify of "whether password is set" as password not a must
+	password, _ := u.User.Password()
 
 	httpConfig := influxdb.HTTPConfig{
 		Addr:     fmt.Sprintf("%s://%s:%s", u.Scheme, u.Hostname(), u.Port()),
