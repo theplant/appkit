@@ -1,3 +1,7 @@
+# PR [#12](https://github.com/theplant/appkit/pull/12)
+
+* Upgrade [`influxdb.Client`](https://github.com/influxdata/influxdb/tree/master/client#description) to `v2` version to fix the monitoring/influxdb monitor broken [issue](https://github.com/theplant/appkit/issues/11) due to the old version of `influxdb.Client` being deprecated.
+
 # PR [#9](https://github.com/theplant/appkit/pull/9)
 
 * Fix `contexts.HTTPStatus` to assume that the response is `http.StatusOK`, rather than `0`.
