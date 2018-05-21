@@ -31,14 +31,6 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		return nil, errors.Wrapf(err, "couldn't parse influxdb url %v", monitorURL)
 	} else if !u.IsAbs() {
 		return nil, errors.Errorf("influxdb monitoring url %v not absolute url", monitorURL)
-	} else if u.Scheme != "http" && u.Scheme != "https" {
-		return nil, errors.Errorf("influxdb monitoring url %v not scheme", monitorURL)
-	}
-
-	database := strings.TrimLeft(u.Path, "/")
-
-	if strings.TrimSpace(database) == "" {
-		return nil, errors.Errorf("influxdb monitoring url %v not database", monitorURL)
 	}
 
 	username := ""
@@ -60,6 +52,12 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't initialize influxdb http client with http config %+v", httpConfig)
+	}
+
+	database := strings.TrimLeft(u.Path, "/")
+
+	if strings.TrimSpace(database) == "" {
+		return nil, errors.Errorf("influxdb monitoring url %v not database", monitorURL)
 	}
 
 	monitor := influxdbMonitor{

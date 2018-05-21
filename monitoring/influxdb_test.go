@@ -10,9 +10,9 @@ import (
 func TestInvalidInfluxdbConfig(t *testing.T) {
 	logger := log.NewNopLogger()
 	cases := map[string]string{
-		"not absolute url": "",
-		"not scheme":       "localhost:8086/local",
-		"not database":     "http://root:password@localhost:8086",
+		"not absolute url":            "",
+		"Unsupported protocol scheme": "localhost:8086/local",
+		"not database":                "http://root:password@localhost:8086",
 	}
 
 	for reason, config := range cases {
