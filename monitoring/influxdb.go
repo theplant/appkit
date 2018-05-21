@@ -119,11 +119,14 @@ func (im influxdbMonitor) InsertRecord(measurement string, value interface{}, ta
 		Database: im.database,
 	})
 
+	l := im.logger.With("database", im.database,
+		"measurement", measurement,
+		"value", value,
+		"tags", tags)
+
 	if err != nil {
-		im.logger.Error().Log(
+		l.Error().Log(
 			"err", err,
-			"database", im.database,
-			"measurement", measurement,
 			"during", "influxdb.NewBatchPoints",
 			"msg", fmt.Sprintf("Error initializing batch points for %s: %v", measurement, err),
 		)
@@ -132,12 +135,8 @@ func (im influxdbMonitor) InsertRecord(measurement string, value interface{}, ta
 	pt, err := influxdb.NewPoint(measurement, tags, fields, at)
 
 	if err != nil {
-		im.logger.Error().Log(
+		l.Error().Log(
 			"err", err,
-			"database", im.database,
-			"measurement", measurement,
-			"value", value,
-			"tags", tags,
 			"during", "influxdb.NewPoint",
 			"msg", fmt.Sprintf("Error initializing a point for %s: %v", measurement, err),
 		)
@@ -148,10 +147,6 @@ func (im influxdbMonitor) InsertRecord(measurement string, value interface{}, ta
 	if err := im.client.Write(bp); err != nil {
 		im.logger.Error().Log(
 			"err", err,
-			"database", im.database,
-			"measurement", measurement,
-			"value", value,
-			"tags", tags,
 			"during", "influxdb.Client.Write",
 			"msg", fmt.Sprintf("Error inserting record into %s: %v", measurement, err),
 		)
