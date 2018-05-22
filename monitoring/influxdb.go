@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
-	influxdb "github.com/influxdata/influxdb/client"
 	"github.com/pkg/errors"
 	"github.com/theplant/appkit/log"
+
+	influxdb "github.com/influxdata/influxdb/client/v2"
 )
 
 // InfluxMonitorConfig type for configuration of Monitor that sinks to
@@ -32,20 +33,42 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		return nil, errors.Errorf("influxdb monitoring url %v not absolute url", monitorURL)
 	}
 
-	// NewClient always returns a nil error
-	client, _ := influxdb.NewClient(influxdb.Config{
-		URL: *u,
-	})
+	username := ""
+	password := ""
+
+	if u.User != nil {
+		username = u.User.Username()
+		// Skips identify of "whether password is set" as password not a must
+		password, _ = u.User.Password()
+	}
+
+	httpConfig := influxdb.HTTPConfig{
+		Addr:     fmt.Sprintf("%s://%s", u.Scheme, u.Host),
+		Username: username,
+		Password: password,
+	}
+
+	client, err := influxdb.NewHTTPClient(httpConfig)
+
+	if err != nil {
+		return nil, errors.Wrapf(err, "couldn't initialize influxdb http client with http config %+v", httpConfig)
+	}
+
+	database := strings.TrimLeft(u.Path, "/")
+
+	if strings.TrimSpace(database) == "" {
+		return nil, errors.Errorf("influxdb monitoring url %v not database", monitorURL)
+	}
 
 	monitor := influxdbMonitor{
-		database: strings.TrimLeft(u.Path, "/"),
+		database: database,
 		client:   client,
 		logger:   logger,
 	}
 
 	logger = logger.With(
 		"scheme", u.Scheme,
-		"username", u.User.Username(),
+		"username", username,
 		"database", monitor.database,
 		"host", u.Host,
 	)
@@ -56,7 +79,7 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 
 		for {
 			// Ignore duration, version
-			_, _, err = client.Ping()
+			_, _, err = client.Ping(5 * time.Second)
 			if err != nil {
 				logger.Warn().Log(
 					"err", err,
@@ -70,7 +93,7 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 	}()
 
 	logger.Info().Log(
-		"msg", fmt.Sprintf("influxdb instrumentation writing to %s://%s@%s/%s", u.Scheme, u.User.Username(), u.Host, monitor.database),
+		"msg", fmt.Sprintf("influxdb instrumentation writing to %s://%s@%s/%s", u.Scheme, username, u.Host, monitor.database),
 	)
 
 	return &monitor, nil
@@ -79,7 +102,7 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 // InfluxdbMonitor implements monitor.Monitor interface, it wraps
 // the influxdb client configuration.
 type influxdbMonitor struct {
-	client   *influxdb.Client
+	client   influxdb.Client
 	database string
 	logger   log.Logger
 }
@@ -92,26 +115,38 @@ func (im influxdbMonitor) InsertRecord(measurement string, value interface{}, ta
 
 	fields["value"] = value
 
-	// Ignore response, we only care about write errors
-	_, err := im.client.Write(influxdb.BatchPoints{
+	bp, err := influxdb.NewBatchPoints(influxdb.BatchPointsConfig{
 		Database: im.database,
-		Points: []influxdb.Point{
-			{
-				Measurement: measurement,
-				Fields:      fields,
-				Tags:        tags,
-				Time:        at,
-			},
-		},
 	})
 
+	l := im.logger.With("database", im.database,
+		"measurement", measurement,
+		"value", value,
+		"tags", tags)
+
 	if err != nil {
+		l.Error().Log(
+			"err", err,
+			"during", "influxdb.NewBatchPoints",
+			"msg", fmt.Sprintf("Error initializing batch points for %s: %v", measurement, err),
+		)
+	}
+
+	pt, err := influxdb.NewPoint(measurement, tags, fields, at)
+
+	if err != nil {
+		l.Error().Log(
+			"err", err,
+			"during", "influxdb.NewPoint",
+			"msg", fmt.Sprintf("Error initializing a point for %s: %v", measurement, err),
+		)
+	}
+
+	bp.AddPoint(pt)
+
+	if err := im.client.Write(bp); err != nil {
 		im.logger.Error().Log(
 			"err", err,
-			"database", im.database,
-			"measurement", measurement,
-			"value", value,
-			"tags", tags,
 			"during", "influxdb.Client.Write",
 			"msg", fmt.Sprintf("Error inserting record into %s: %v", measurement, err),
 		)
