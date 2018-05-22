@@ -42,3 +42,9 @@ func Compose(middlewares ...Middleware) Middleware {
 		return h
 	}
 }
+
+// idMiddleware is middleware that has no effect, useful for optional
+// middleware, instead of returning a custom function every time.
+func idMiddleware(handler http.Handler) http.Handler {
+	return handler
+}
