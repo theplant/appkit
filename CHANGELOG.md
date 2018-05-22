@@ -2,6 +2,9 @@
 
 * Add `server.SecureMiddleware` for CSRF/CORS API configuration.
 
+* Add `log.NewTestLogger` for stable log output when testing (ie. no
+  timestamps or stack references)
+
 # PR [#12](https://github.com/theplant/appkit/pull/12)
 
 * Upgrade [`influxdb.Client`](https://github.com/influxdata/influxdb/tree/master/client#description) to `v2` version to fix the monitoring/influxdb monitor broken [issue](https://github.com/theplant/appkit/issues/11) due to the old version of `influxdb.Client` being deprecated.
