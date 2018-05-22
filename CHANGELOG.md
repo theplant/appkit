@@ -1,4 +1,4 @@
-# PR <pending>
+# PR [#14](https://github.com/theplant/appkit/pull/14)
 
 * Add `server.SecureMiddleware` for CSRF/CORS API configuration.
 
