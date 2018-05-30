@@ -105,6 +105,14 @@ func NewNopLogger() Logger {
 	return Logger{Logger: log.NewNopLogger()}
 }
 
+// NewTestLogger returns a logger that won't log timestamps or caller,
+// to make output stable for use in tests.
+func NewTestLogger() Logger {
+	return Logger{
+		Logger: log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)),
+	}
+}
+
 type logWriter struct {
 	log.Logger
 }
