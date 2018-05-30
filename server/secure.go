@@ -91,6 +91,8 @@ func failCrossSiteRequest(w http.ResponseWriter) {
 //
 // Note: are there any browsers that implement CORS but do *not* send `Origin` headers?
 func verifyHeader(l log.Logger, csrfHeader string) Middleware {
+	csrfHeader = http.CanonicalHeaderKey(csrfHeader)
+
 	l = l.With("during", "appkit/server.verifyHeader")
 
 	if csrfHeader == "" {

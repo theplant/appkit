@@ -60,6 +60,15 @@ func ExampleCSRFHeader_Missing() {
 	// 400
 }
 
+// Go's net/http:
+//
+// > HTTP defines that header names are case-insensitive. The request
+//   parser implements this by using CanonicalHeaderKey, making the
+//   first character and any characters following a hyphen uppercase
+//   and the rest lowercase.
+//
+// To avoid confusion, `verifyHeader` middleware converts the passed
+// key using CanonicalHeaderKey before using it to filter requests
 func ExampleCSRFHeader_CaseSensitivity() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins:  "http://example.com",
@@ -73,7 +82,23 @@ func ExampleCSRFHeader_CaseSensitivity() {
 
 	exec(s, req)
 
+	// All lowercase header, net/http wouldn't match this header by
+	// default, but verifyHeader will, because it canonicalises it.
+	cfg = CrossSiteConfig{
+		RawAllowedOrigins:  "http://example.com",
+		CSRFRequiredHeader: "x-csrf",
+	}
+
+	s, req = setup(cfg)
+
+	req.Header.Add("origin", "http://example.com")
+	req.Header.Add("X-Csrf", ".")
+
+	exec(s, req)
+
 	// Output: executed handler
+	// 200
+	// executed handler
 	// 200
 }
 
