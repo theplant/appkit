@@ -176,7 +176,7 @@ func ExampleOrigin_OverlappingReferrerFallback() {
 	exec(s, req)
 
 	// Output: level=warn during=appkit/server.verifyOrigin msg="No origin header, falling back to referrer" referrer=http://example.com.evil.com/path
-	//level=error during=appkit/server.verifyOrigin msg="CSRF failure: origin/referrer does not match target origin" allowed_origins=http://example.com origin=http://example.com.evil.com referrer=http://example.com.evil.com/path
+	// level=error during=appkit/server.verifyOrigin msg="CSRF failure: origin/referrer does not match target origin" allowed_origins=http://example.com origin=http://example.com.evil.com referrer=http://example.com.evil.com/path
 	// 400
 }
 
