@@ -198,7 +198,7 @@ func corsPolicy(allowedOrigins []string, cs CrossSiteConfig, l log.Logger) Middl
 	l.Info().Log(
 		"msg", fmt.Sprintf("CORS: allowed at origins: %v, allowed with credentials: %v, allowed CSRF header %v", allowedOrigins, cs.AllowCredentials, cs.CSRFRequiredHeader),
 		"during", "appkit/server.corsPolicy",
-		"allowed_origins", allowedOrigins,
+		"allowed_origins", strings.Join(allowedOrigins, ","),
 		"allow_credentials", cs.AllowCredentials,
 		"allowed_headers", cs.CSRFRequiredHeader,
 	)
