@@ -126,7 +126,7 @@ func PrettyFormat_(values ...interface{}) (r string) {
 	return fmt.Sprintln(pvals...)
 }
 
-func ex(r map[string]interface{}, f string) (interface{}, bool) {
+func ex(r map[string][]interface{}, f string) ([]interface{}, bool) {
 	v, ok := r[f]
 	delete(r, f)
 	//	if ok && len(v) > 0 {
@@ -136,17 +136,26 @@ func ex(r map[string]interface{}, f string) (interface{}, bool) {
 
 }
 
-func mapVals(values ...interface{}) map[string]interface{} {
-	m := map[string]interface{}{}
-	for i, key := range values {
+func mapVals(kvs ...interface{}) map[string][]interface{} {
+	m := map[string][]interface{}{}
+	for i, key := range kvs {
 		if i%2 == 1 {
 			continue
 		}
 
-		m[key.(string)] = values[i+1]
+		v, ok := m[key.(string)]
+		if !ok {
+			v = []interface{}{}
+		}
+
+		v = append(v, kvs[i+1])
+
+		m[key.(string)] = v
 	}
 	return m
 }
+
+var blankTime = strings.Repeat(" ", len(time.StampMilli))
 
 /*
 PrettyFormat accepts log values and returns pretty output string
@@ -154,26 +163,19 @@ PrettyFormat accepts log values and returns pretty output string
 func PrettyFormat(values ...interface{}) string {
 	r := mapVals(values...)
 
-	level, ok := ex(r, "level")
-	if !ok {
-		level = "<none>"
+	level := "<none>"
+	if levelA, ok := ex(r, "level"); ok && len(levelA) > 0 {
+		level = levelA[0].(string)
 	}
 
-	ts, ok := ex(r, "ts")
-	var tsStr string
-	if ok {
-		tsStr = ts.(string)
-	} else {
-		tsStr = strings.Repeat(" ", len(time.StampMilli))
+	tsStr := strings.Repeat(" ", len(time.StampMilli))
+	if ts, ok := ex(r, "ts"); ok && len(ts) > 0 {
+		tsStr = ts[0].(string)
 	}
 
-	msgI, ok := ex(r, "msg")
-	msg := "<no msg>"
-	if ok {
-		m, ok := msgI.(string)
-		if ok && len(m) > 0 {
-			msg = m
-		}
+	msg := []interface{}{"<no msg>"}
+	if msgI, ok := ex(r, "msg"); ok && len(msgI) > 0 {
+		msg = msgI
 	}
 
 	colour := "37"
@@ -190,7 +192,11 @@ func PrettyFormat(values ...interface{}) string {
 		colour = "30"
 	}
 
-	output := []string{fmt.Sprintf("\033[%s;1m%s: %s\033[0m (%s)", colour, tsStr, msg, level)}
+	output := []string{fmt.Sprintf("\033[%s;1m%s: %s\033[0m (%s)", colour, tsStr, msg[0], level)}
+
+	for _, m := range msg[1:] {
+		output = append(output, fmt.Sprintf("\033[%s;1m%s  %s\033[0m", colour, blankTime, m))
+	}
 
 	for k, v := range r {
 		output = append(output, fmt.Sprintf("  %s=%v", k, v))
