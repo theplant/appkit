@@ -113,20 +113,19 @@ func setupSessionStore(config *Config) *sessions.CookieStore {
 		panic("session name must be present")
 	}
 
-	sessionStoreKey, err := base64.StdEncoding.DecodeString(config.Key)
-	if err != nil {
+	if _, err := base64.StdEncoding.DecodeString(config.Key); err != nil {
 		panic(err)
 	}
 
-	sessionStore := sessions.NewCookieStore(sessionStoreKey)
-
-	sessionStore.Options.HttpOnly = true
-	sessionStore.Options.Secure = config.Secure
-	if config.MaxAge != 0 {
-		sessionStore.MaxAge(config.MaxAge)
+	csConfig := CookieStoreConfig{
+		Name:       config.Name,
+		Key:        config.Key,
+		NoHTTPOnly: false,
+		NoSecure:   !config.Secure,
+		MaxAge:     config.MaxAge,
 	}
 
-	return sessionStore
+	return NewCookieStore(csConfig)
 }
 
 func newSession(w http.ResponseWriter, r *http.Request, config *Config, sessionStore *sessions.CookieStore) *session {
