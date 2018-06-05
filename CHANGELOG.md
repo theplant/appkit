@@ -1,3 +1,9 @@
+# PR [#16](https://github.com/theplant/appkit/pull/16)
+
+* Made the `sessions.Config` to be compatible with `jinzhu/configor`, change the struct to enable `Secure` and `HttpOnly` by default and extend the struct to make it general.
+
+* Add `sessions.NewCookieStore` to easy new a `gorilla/sessions.CookieStore` with `sessions.Config`.
+
 # PR [#14](https://github.com/theplant/appkit/pull/14)
 
 * Add `server.SecureMiddleware` for CSRF/CORS API configuration.
