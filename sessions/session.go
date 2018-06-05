@@ -14,7 +14,7 @@ import (
 type session struct {
 	w      http.ResponseWriter
 	r      *http.Request
-	config *Config
+	config *CookieStoreConfig
 	store  *sessions.CookieStore
 }
 
@@ -24,7 +24,7 @@ const sessionCtxKey sessionContextKey = iota
 
 // WithSession is middleware to generate a session store for the whole request lifetime.
 // later session operations should call `Get`/`Put`/`Del` to work with the session
-func WithSession(conf *Config) func(http.Handler) http.Handler {
+func WithSession(conf *CookieStoreConfig) func(http.Handler) http.Handler {
 	store := setupSessionStore(conf)
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -100,7 +100,7 @@ func Del(ctx context.Context, key string) error {
 	return nil
 }
 
-func setupSessionStore(config *Config) *sessions.CookieStore {
+func setupSessionStore(config *CookieStoreConfig) *sessions.CookieStore {
 	if config.Name == "" {
 		panic("session name must be present")
 	}
@@ -112,7 +112,7 @@ func setupSessionStore(config *Config) *sessions.CookieStore {
 	return NewCookieStore(*config)
 }
 
-func newSession(w http.ResponseWriter, r *http.Request, config *Config, sessionStore *sessions.CookieStore) *session {
+func newSession(w http.ResponseWriter, r *http.Request, config *CookieStoreConfig, sessionStore *sessions.CookieStore) *session {
 	return &session{w, r, config, sessionStore}
 }
 
