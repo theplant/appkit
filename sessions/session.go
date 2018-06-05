@@ -18,14 +18,6 @@ type session struct {
 	store  *sessions.CookieStore
 }
 
-// Config the necessary configs for session
-type Config struct {
-	Name   string
-	Key    string
-	MaxAge int
-	Secure bool
-}
-
 type sessionContextKey int
 
 const sessionCtxKey sessionContextKey = iota
@@ -117,15 +109,7 @@ func setupSessionStore(config *Config) *sessions.CookieStore {
 		panic(err)
 	}
 
-	csConfig := CookieStoreConfig{
-		Name:       config.Name,
-		Key:        config.Key,
-		NoHTTPOnly: false,
-		NoSecure:   !config.Secure,
-		MaxAge:     config.MaxAge,
-	}
-
-	return NewCookieStore(csConfig)
+	return NewCookieStore(*config)
 }
 
 func newSession(w http.ResponseWriter, r *http.Request, config *Config, sessionStore *sessions.CookieStore) *session {

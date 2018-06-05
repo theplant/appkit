@@ -12,11 +12,11 @@ import (
 	"github.com/theplant/appkit/sessions"
 )
 
-func ExampleCookieStoreConfig_Default() {
+func ExampleConfig_Default() {
 	os.Setenv("TEST_APPKIT_SESSIONS_COOKIESTORE_Name", "COOKIESTORE_NAME")
 	os.Setenv("TEST_APPKIT_SESSIONS_COOKIESTORE_Key", "COOKIESTORE_KEY")
 
-	config, err := loadCookieStoreConfig()
+	config, err := loadConfig()
 
 	if err != nil {
 		panic(errors.Wrap(err, "failed to load cookie store config"))
@@ -40,11 +40,11 @@ func ExampleCookieStoreConfig_Default() {
 	// NoSecure: false
 }
 
-func ExampleCookieStoreConfig_MissingName() {
+func ExampleConfig_MissingName() {
 	os.Unsetenv("TEST_APPKIT_SESSIONS_COOKIESTORE_Name")
 	os.Setenv("TEST_APPKIT_SESSIONS_COOKIESTORE_Key", "secret")
 
-	_, err := loadCookieStoreConfig()
+	_, err := loadConfig()
 
 	fmt.Println(err)
 
@@ -52,11 +52,11 @@ func ExampleCookieStoreConfig_MissingName() {
 	// Name is required, but blank
 }
 
-func ExampleCookieStoreConfig_MissingKey() {
+func ExampleConfig_MissingKey() {
 	os.Setenv("TEST_APPKIT_SESSIONS_COOKIESTORE_Name", "_cookiestore")
 	os.Unsetenv("TEST_APPKIT_SESSIONS_COOKIESTORE_Key")
 
-	_, err := loadCookieStoreConfig()
+	_, err := loadConfig()
 
 	fmt.Println(err)
 
@@ -64,14 +64,14 @@ func ExampleCookieStoreConfig_MissingKey() {
 	// Key is required, but blank
 }
 
-func loadCookieStoreConfig() (config sessions.CookieStoreConfig, err error) {
+func loadConfig() (config sessions.Config, err error) {
 	err = configor.New(&configor.Config{ENVPrefix: "TEST_APPKIT_SESSIONS_COOKIESTORE"}).Load(&config)
 
 	return
 }
 
 func TestNewCookieStore(t *testing.T) {
-	write := func(config sessions.CookieStoreConfig) (cookie *http.Cookie, err error) {
+	write := func(config sessions.Config) (cookie *http.Cookie, err error) {
 		req, err := http.NewRequest("GET", "/", nil)
 
 		if err != nil {
@@ -98,7 +98,7 @@ func TestNewCookieStore(t *testing.T) {
 		return recorder.Result().Cookies()[0], nil
 	}
 
-	runCase := func(config sessions.CookieStoreConfig) func(t *testing.T) {
+	runCase := func(config sessions.Config) func(t *testing.T) {
 		return func(t *testing.T) {
 			cookie, err := write(config)
 
@@ -127,7 +127,7 @@ func TestNewCookieStore(t *testing.T) {
 		}
 	}
 
-	type C = sessions.CookieStoreConfig
+	type C = sessions.Config
 
 	t.Run("Default", runCase(C{Name: "cookiestore_name", Key: "secret"}))
 	t.Run("Customized", runCase(C{Name: "name", Key: "secret", Path: "/cookie-path", Domain: "hello.local", MaxAge: 60, NoHTTPOnly: true, NoSecure: true}))

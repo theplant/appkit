@@ -2,7 +2,7 @@ package sessions
 
 import "github.com/gorilla/sessions"
 
-// CookieStoreConfig is a general cookie storage configuration. It
+// Config is a general cookie storage configuration. It
 // extends the `gorilla/sessions.Options` and compatible to work with
 // `jinzhu/configor.Load` to be convenient to:
 // * Set the least required fields
@@ -11,7 +11,7 @@ import "github.com/gorilla/sessions"
 //
 // The `gorilla/sessions.Options`:
 // https://github.com/gorilla/sessions/blob/7910f5bb5ac86ab08f97d8bda39b476fc117b684/sessions.go#L19-L34
-type CookieStoreConfig struct {
+type Config struct {
 	Name       string `required:"true"`
 	Key        string `required:"true"`
 	Domain     string
@@ -22,11 +22,11 @@ type CookieStoreConfig struct {
 }
 
 // NewCookieStore initializes a `gorilla/sessions.CookieStore` by
-// `CookieStoreConfig`.
+// `Config`.
 //
 // The `gorilla/sessions.CookieStore`:
 // https://github.com/gorilla/sessions/blob/7910f5bb5ac86ab08f97d8bda39b476fc117b684/store.go#L66-L70
-func NewCookieStore(config CookieStoreConfig) *sessions.CookieStore {
+func NewCookieStore(config Config) *sessions.CookieStore {
 	cs := sessions.NewCookieStore([]byte(config.Key))
 
 	cs.Options = &sessions.Options{
