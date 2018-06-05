@@ -37,7 +37,7 @@ func TestGorillaContextMemoryleak(t *testing.T) {
 
 	respWriter := httptest.NewRecorder()
 
-	conf := &Config{
+	conf := &CookieStoreConfig{
 		Name: "test",
 		Key:  "6bude5uOm9eZV280BjP6f6a5bEj7fg2PWl6GysY68CmXfOv8NFZ9O6ZIpbllQPtr",
 	}
