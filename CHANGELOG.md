@@ -1,3 +1,7 @@
+# PR [#17](https://github.com/theplant/appkit/pull/17)
+
+* Don't log SQL query *values* in Gorm log adapter
+
 # PR [#16](https://github.com/theplant/appkit/pull/16)
 
 * Replace the `sessions.Config` with `sessions.CookieStoreConfig`, the `sessions.CookieStoreConfig` is compatible with `jinzhu/configor`, change the struct to enable `Secure` and `HttpOnly` by default and extend the struct to make it general.
