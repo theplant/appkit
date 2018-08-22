@@ -60,9 +60,8 @@ func ExampleAppend_errors() {
 
 	// Output:
 	// 2 errors occurred:
-	//
-	// * Invalid Length for 1234
-	// * Invalid Length for b11111
+	// 	* Invalid Length for 1234
+	// 	* Invalid Length for b11111
 }
 
 func ExampleExtract_errors() {
