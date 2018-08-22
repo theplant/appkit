@@ -135,8 +135,8 @@ func (l GormLogger) Print(values ...interface{}) {
 		level, source := values[0], values[1]
 		log := l.With("type", level, "source", source)
 		if level == "sql" {
-			dur, sql, values := values[2].(time.Duration), values[3].(string), values[4].([]interface{})
-			sqlLog(log, dur, sql, values)
+			dur, sql := values[2].(time.Duration), values[3].(string)
+			sqlLog(log, dur, sql)
 			return
 		} else if level == "log" {
 			logLog(log, values[2:])
@@ -146,7 +146,7 @@ func (l GormLogger) Print(values ...interface{}) {
 	}
 }
 
-func sqlLog(l Logger, dur time.Duration, query string, values []interface{}) {
+func sqlLog(l Logger, dur time.Duration, query string) {
 	logger := l.Debug()
 	if dur > 100*time.Millisecond {
 		logger = l.Warn()
@@ -155,9 +155,6 @@ func sqlLog(l Logger, dur time.Duration, query string, values []interface{}) {
 	}
 
 	args := []interface{}{"query_us", int64(dur / time.Microsecond), "query", query}
-	if len(values) > 0 {
-		args = append(args, "values", fmt.Sprintf("%+v", values))
-	}
 
 	logger.Log(args...)
 }
