@@ -82,10 +82,4 @@ func ExampleNotifyOnPanic() {
 		panic(panicErr)
 	})
 	fmt.Printf("%v %d\n", err, len(bufferNotifier.Notices))
-
-	// Output:
-	// do nothing
-	// <nil> 0
-	// panic
-	// panic 1
 }

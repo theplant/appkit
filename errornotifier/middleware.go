@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 
 	"github.com/theplant/appkit/log"
 )
@@ -57,6 +58,9 @@ func NotifyOnPanic(n Notifier, req *http.Request, f func()) (err error) {
 		} else {
 			err = e
 		}
+
+		l := log.ForceContext(req.Context())
+		l.Error().Log("msg", err.Error(), "stack", string(debug.Stack()))
 
 		// not using goroutine here in order to keep the whole backtrace in
 		// airbrake report
