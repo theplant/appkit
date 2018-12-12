@@ -1,3 +1,7 @@
+# PR [#19](https://github.com/theplant/appkit/pull/19)
+
+* Add Package appkit/credentials
+
 # PR [#17](https://github.com/theplant/appkit/pull/17)
 
 * Don't log SQL query *values* in Gorm log adapter

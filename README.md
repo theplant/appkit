@@ -119,3 +119,8 @@ For an "ABC" context:
 Secret Box provides a simple interface for encryption of data for storage at rest.
 
 It is implemented as a simple wrapper around `golang.org/x/crypto/nacl/secretbox` that takes care of handling the nonce.
+
+# Credentials
+
+Package to provide single interface for acquiring AWS (-only, for now)
+credentials for apps running on different platforms.
