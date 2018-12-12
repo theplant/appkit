@@ -83,12 +83,12 @@ func validate(m map[string]interface{}, key string, err error) (string, error) {
 func NewSession(logger log.Logger, vault *api.Client, path string) (*session.Session, error) {
 	logger = logger.With(
 		"context", "appkit/credentials/aws",
+		"aws_secret_path", path,
 	)
 
 	if vault != nil {
 		logger.Info().Log(
 			"msg", "initialising aws session with vault",
-			"path", path,
 		)
 
 		config := aws.NewConfig().WithCredentials(

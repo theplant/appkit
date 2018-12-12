@@ -35,8 +35,6 @@ func NewVaultClient(logger log.Logger, config Config) (*api.Client, error) {
 	logger.Debug().Log(
 		"msg", "creating vault client",
 	)
-	////////////////////////////////////////
-	// VAULT
 
 	cfg := api.Config{
 		Address: config.Address,
