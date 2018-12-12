@@ -1,18 +1,6 @@
 provider "vault" {}
 provider "kubernetes" {}
 
-variable "k8s-namespace" {}
-variable "name" {}
-variable "aws-role-arn" {}
-
-variable "vault-k8s-backend" {
-  default = "kubernetes"
-}
-
-variable "vault-aws-backend" {
-  default = "aws"
-}
-
 locals {
   ns-name = "${var.k8s-namespace}.${var.name}"
 }
@@ -66,19 +54,4 @@ path "${var.vault-aws-backend}/sts/${local.ns-name}" {
   capabilities = ["read"]
 }
 EOT
-}
-
-output "k8s-service-account" {
-  value = "${var.k8s-namespace}:${var.name}"
-}
-
-output "vault-authn-path" {
-  value = "auth/${var.vault-k8s-backend}login"
-}
-output "vault-authn-role" {
-  value = "${vault_kubernetes_auth_backend_role.kubernetes.role_name}"
-}
-
-output "vault-aws-path" {
-  value = "${var.vault-aws-backend}/sts/${vault_aws_secret_backend_role.aws-role.name}"
 }

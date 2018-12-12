@@ -65,7 +65,7 @@ resource "vault_aws_secret_backend" "aws" {
 }
 
 module "app-role" {
-  source = "./terraform"
+  source = "../terraform"
 
   k8s-namespace = "${var.kubernetes_namespace}"
   name          = "app"

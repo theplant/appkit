@@ -61,7 +61,7 @@ terraform.tfvars: Makefile
 	$(KUBECTL) get secret $(K8S_DEFAULT_SECRET) -o="jsonpath={.data['ca\.crt']}" | base64 -D >> $@
 	echo "CERT" >> $@
 
-terraform.tfstate: example.tf terraform/vault.tf terraform.tfvars
+terraform.tfstate: example.tf terraform.tfvars
 	$(TERRAFORM) apply -auto-approve
 	sleep 8
 
