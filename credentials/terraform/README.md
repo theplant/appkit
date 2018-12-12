@@ -21,4 +21,4 @@ Use module outputs to populate app configuration:
 
 * Vault Authn role (`VAULT_AUTHN_ROLE`)
 
-* Vault AWS secret path (`VAULT_AWS_PATH`)
+* Vault AWS secret path (`VAULT_AWSPATH`)

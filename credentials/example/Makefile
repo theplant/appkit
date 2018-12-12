@@ -78,9 +78,8 @@ run: dockerimage
 	$(KUBECTL) delete job app || echo "skipping deletion"
 	$(KUBECTL) delete job app-failing || echo "skipping deletion"
 	$(KUBECTL) delete configmap app || echo "skipping deletion"
-	$(KUBECTL) create configmap app --from-literal=VAULT_AUTHN_ROLE=$(shell terraform output vault-authn-role) --from-literal=VAULT_AWS_PATH=$(shell terraform output vault-aws-path)
+	$(KUBECTL) create configmap app --from-literal=VAULT_AUTHN_ADDRESS=http://vault:8200 --from-literal=VAULT_AUTHN_ROLE=$(shell terraform output vault-authn-role) --from-literal=VAULT_AWSPATH=$(shell terraform output vault-aws-path)
 	$(KUBECTL) apply -f app.yaml
-	sleep 5
 
 ########################################
 # ACCEPTANCE TEST :E
@@ -89,6 +88,7 @@ test-up: clean
 	make bootstrap
 	make vaultconfig
 	make run
+	sleep 5
 	make logs
 	@echo "================= LOOK FOR assumed-role ARN ^^^ ================"
 	make logs-failing

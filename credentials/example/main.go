@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/jinzhu/configor"
+	"github.com/theplant/appkit/credentials"
 	"github.com/theplant/appkit/credentials/aws"
 	"github.com/theplant/appkit/credentials/vault"
 	"github.com/theplant/appkit/log"
@@ -15,18 +16,22 @@ func main() {
 
 	logger.Info().Log("msg", "starting up...")
 
-	vault, err := vault.NewVaultClient(logger, vault.Config{
-		Address:  "http://vault:8200",
-		AuthPath: "auth/kubernetes/login",
-		Role:     os.Getenv("VAULT_AUTHN_ROLE"),
-		//		Autorenew: true,
-	})
+	var config credentials.Config
+
+	err := configor.New(&configor.Config{ENVPrefix: "VAULT"}).Load(&config)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Printf("%#v\n", config)
+
+	vault, err := vault.NewVaultClient(logger, config.Authn)
 
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	session, err := aws.NewSession(logger, vault, os.Getenv("VAULT_AWS_PATH"))
+	session, err := aws.NewSession(logger, vault, config.AWSPath)
 	if err != nil {
 		fmt.Println(err)
 	}
