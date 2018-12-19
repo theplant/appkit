@@ -100,7 +100,7 @@ func verifyHeader(l log.Logger, csrfHeader string) Middleware {
 		// non-API-based apps (ie. ones that render HTML forms by
 		// themselves)
 		l.Info().Log("msg", "no CSRF header set, disabling header verification")
-		return idMiddleware
+		return IdMiddleware
 	}
 
 	l.Info().Log(
@@ -138,7 +138,7 @@ func verifyOrigin(allowed []string, l log.Logger) Middleware {
 
 	if len(allowed) == 0 {
 		l.Warn().Log("msg", "no allowed origins, disabling origin/referrer verification")
-		return idMiddleware
+		return IdMiddleware
 	}
 
 	l.Info().Log(
