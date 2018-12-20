@@ -1,3 +1,7 @@
+# PR [#20](https://github.com/theplant/appkit/pull/20)
+
+* Add `tracing` package
+
 # PR [#17](https://github.com/theplant/appkit/pull/17)
 
 * Don't log SQL query *values* in Gorm log adapter

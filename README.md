@@ -119,3 +119,17 @@ For an "ABC" context:
 Secret Box provides a simple interface for encryption of data for storage at rest.
 
 It is implemented as a simple wrapper around `golang.org/x/crypto/nacl/secretbox` that takes care of handling the nonce.
+
+# [Tracing](tracing/README.md)
+
+Tracing supports distributed tracing of requests by linking together
+all of the parts of work that go into fulfilling a request.
+
+For example, with a HTML front-end talking to back-end HTTPS APIs, it
+will link the original front-end request with any/all HTTP requests
+made to the back-end. Also, it can link together deeper requests made
+by the *back-end* to other APIs and services.
+
+For now, It's implemented with [OpenTracing](https://opentracing.io)
+and expects to talk to a [Jaeger](https://www.jaegertracing.io)
+back-end.
