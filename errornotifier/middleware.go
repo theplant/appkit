@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 	"github.com/theplant/appkit/log"
+	"github.com/theplant/appkit/tracing"
 )
 
 type key int
@@ -58,9 +61,13 @@ func NotifyOnPanic(n Notifier, req *http.Request, f func()) (err error) {
 			err = e
 		}
 
-		// not using goroutine here in order to keep the whole backtrace in
-		// airbrake report
-		n.Notify(err, req)
+		tracing.Span(req.Context(), "appkit/errorntoifier.NotifyOnPanic", func(ctx context.Context, span opentracing.Span) error {
+			ext.SpanKind.Set(span, ext.SpanKindRPCClientEnum)
+
+			// not using goroutine here in order to keep the whole backtrace in
+			// airbrake report
+			return n.Notify(err, req)
+		})
 		return
 	}()
 
