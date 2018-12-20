@@ -8,6 +8,9 @@ will link the original front-end request with any/all HTTP requests
 made to the back-end. Also, it can link together deeper requests made
 by the *back-end* to other APIs and services.
 
+Currently this library requires the jaeger-lib dependency to be pinned
+at `v1.5.0`.
+
 # Middleware
 
 To configure tracing of incoming HTTP requests:
