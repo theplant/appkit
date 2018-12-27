@@ -16,7 +16,7 @@ import (
 // InfluxDB
 type InfluxMonitorConfig string
 
-var configRegexp = regexp.MustCompile(`(?P<scheme>(?:https|http):\/\/)(?P<username>\S+):(?P<password>\S+)@(?P<host>\S+)\/(?P<database>\S+)`)
+var configRegexp = regexp.MustCompile(`^(?P<scheme>https?):\/\/(?:(?P<username>.*?)(?::(?P<password>.*?)|)@)?(?P<host>.+?)\/(?P<database>.+?)$`)
 
 func parseConfig(config string) (addr, username, password, database string, err error) {
 	match := configRegexp.FindStringSubmatch(config)
@@ -41,7 +41,7 @@ func parseConfig(config string) (addr, username, password, database string, err 
 		}
 	}
 
-	return scheme + host, username, password, database, nil
+	return scheme + "://" + host, username, password, database, nil
 }
 
 // NewInfluxdbMonitor creates new monitoring influxdb
