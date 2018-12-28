@@ -75,7 +75,7 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 
 	// check connectivity to InfluxDB every 5 minutes
 	go func() {
-		t := time.NewTimer(5 * time.Minute)
+		t := time.NewTicker(5 * time.Minute)
 
 		for {
 			// Ignore duration, version
