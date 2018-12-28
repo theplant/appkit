@@ -2,7 +2,9 @@ package monitoring
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -14,28 +16,28 @@ import (
 
 // InfluxMonitorConfig type for configuration of Monitor that sinks to
 // InfluxDB
-// TODO Add write cache points interval config?
 type InfluxMonitorConfig string
 
 type influxMonitorCfg struct {
-	Addr     string
-	Username string
-	Password string
-	Database string
+	Addr               string
+	Username           string
+	Password           string
+	Database           string
+	BatchWriteInterval time.Duration
 }
 
 const (
-	defaultBatchWriteNanosecondInterval = time.Minute
+	defaultBatchWriteInterval = time.Minute
 )
 
 var (
-	configRegexp = regexp.MustCompile(`^(?P<scheme>https?):\/\/(?:(?P<username>.*?)(?::(?P<password>.*?)|)@)?(?P<host>.+?)\/(?P<database>.+?)$`)
+	configRegexp = regexp.MustCompile(`^(?P<scheme>https?):\/\/(?:(?P<username>.*?)(?::(?P<password>.*?)|)@)?(?P<host>.+?)\/(?P<database>.+?)(?:\?(?P<query>.*?))?$`)
 )
 
 func parseConfig(config string) (*influxMonitorCfg, error) {
 	match := configRegexp.FindStringSubmatch(config)
 	if match == nil {
-		return nil, errors.New("config format error")
+		return nil, errors.New("influxdb config format error")
 	}
 
 	var scheme string
@@ -43,6 +45,7 @@ func parseConfig(config string) (*influxMonitorCfg, error) {
 	var password string
 	var host string
 	var database string
+	var query string
 	for i, name := range configRegexp.SubexpNames() {
 		switch name {
 		case "scheme":
@@ -55,19 +58,45 @@ func parseConfig(config string) (*influxMonitorCfg, error) {
 			host = match[i]
 		case "database":
 			database = match[i]
+		case "query":
+			query = match[i]
 		}
 	}
 
+	var batchWriteInterval time.Duration
+	if query != "" {
+		values, err := url.ParseQuery(query)
+		if err != nil {
+			return nil, errors.Wrap(err, "influxdb config query format error")
+		}
+
+		batchWriteSecondInterval := values.Get("batch-write-second-interval")
+		if batchWriteSecondInterval != "" {
+			second, err := strconv.Atoi(batchWriteSecondInterval)
+			if err != nil {
+				return nil, errors.Wrap(err, "influxdb config parameter batch-write-second-interval format error")
+			}
+
+			batchWriteInterval = time.Duration(second) * time.Second
+		}
+
+	}
+	if batchWriteInterval == 0 {
+		batchWriteInterval = defaultBatchWriteInterval
+	}
+
 	return &influxMonitorCfg{
-		Addr:     scheme + "://" + host,
-		Username: username,
-		Password: password,
-		Database: database,
+		Addr:               scheme + "://" + host,
+		Username:           username,
+		Password:           password,
+		Database:           database,
+		BatchWriteInterval: batchWriteInterval,
 	}, nil
 }
 
 // NewInfluxdbMonitor creates new monitoring influxdb
-// client. config URL syntax is `https://<username>:<password>@<influxDB host>/<database>`
+// client. config URL syntax is `https://<username>:<password>@<influxDB host>/<database>?batch-write-second-interval=seconds`
+// batch-write-second-interval is optional, default is 60.
 //
 // Will returns a error if monitorURL is invalid or not absolute.
 //
@@ -101,12 +130,15 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		database: cfg.Database,
 		client:   client,
 		logger:   logger,
+
+		batchWriteInterval: cfg.BatchWriteInterval,
 	}
 
 	logger = logger.With(
 		"addr", cfg.Addr,
 		"username", cfg.Username,
 		"database", monitor.database,
+		"batch-write-second-interval", int(cfg.BatchWriteInterval/time.Second),
 	)
 
 	// check connectivity to InfluxDB every 5 minutes
@@ -144,12 +176,13 @@ type influxdbMonitor struct {
 	database string
 	logger   log.Logger
 
-	cachePoints      []*influxdb.Point
-	cachePointsMutex sync.Mutex
+	batchWriteInterval time.Duration
+	cachePoints        []*influxdb.Point
+	cachePointsMutex   sync.Mutex
 }
 
 func (im *influxdbMonitor) batchWriteTicker() {
-	t := time.NewTicker(defaultBatchWriteNanosecondInterval)
+	t := time.NewTicker(im.batchWriteInterval)
 
 	for {
 		<-t.C
