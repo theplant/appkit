@@ -132,11 +132,13 @@ func TestParseConfig(t *testing.T) {
 			if err != nil {
 				errorassert.Equal(t, test.expectedErrorStr, err.Error())
 			} else {
-				errorassert.Equal(t, test.expectedAddr, addr)
-				errorassert.Equal(t, test.expectedUsername, username)
-				errorassert.Equal(t, test.expectedPassword, password)
-				errorassert.Equal(t, test.expectedDatabase, database)
+				errorassert.Equal(t, test.expectedErrorStr, "")
 			}
+
+			errorassert.Equal(t, test.expectedAddr, addr)
+			errorassert.Equal(t, test.expectedUsername, username)
+			errorassert.Equal(t, test.expectedPassword, password)
+			errorassert.Equal(t, test.expectedDatabase, database)
 		})
 	}
 }
