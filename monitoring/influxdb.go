@@ -16,16 +16,26 @@ import (
 // InfluxDB
 type InfluxMonitorConfig string
 
+type influxMonitorCfg struct {
+	Addr     string
+	Username string
+	Password string
+	Database string
+}
+
 var configRegexp = regexp.MustCompile(`^(?P<scheme>https?):\/\/(?:(?P<username>.*?)(?::(?P<password>.*?)|)@)?(?P<host>.+?)\/(?P<database>.+?)$`)
 
-func parseConfig(config string) (addr, username, password, database string, err error) {
+func parseConfig(config string) (*influxMonitorCfg, error) {
 	match := configRegexp.FindStringSubmatch(config)
 	if match == nil {
-		return "", "", "", "", errors.New("config format error")
+		return nil, errors.New("config format error")
 	}
 
 	var scheme string
+	var username string
+	var password string
 	var host string
+	var database string
 	for i, name := range configRegexp.SubexpNames() {
 		switch name {
 		case "scheme":
@@ -41,7 +51,12 @@ func parseConfig(config string) (addr, username, password, database string, err 
 		}
 	}
 
-	return scheme + "://" + host, username, password, database, nil
+	return &influxMonitorCfg{
+		Addr:     scheme + "://" + host,
+		Username: username,
+		Password: password,
+		Database: database,
+	}, nil
 }
 
 // NewInfluxdbMonitor creates new monitoring influxdb
@@ -54,15 +69,15 @@ func parseConfig(config string) (addr, username, password, database string, err 
 func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor, error) {
 	monitorURL := string(config)
 
-	addr, username, password, database, err := parseConfig(monitorURL)
+	cfg, err := parseConfig(monitorURL)
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't parse influxdb url %v", monitorURL)
 	}
 
 	httpConfig := influxdb.HTTPConfig{
-		Addr:     addr,
-		Username: username,
-		Password: password,
+		Addr:     cfg.Addr,
+		Username: cfg.Username,
+		Password: cfg.Password,
 	}
 
 	client, err := influxdb.NewHTTPClient(httpConfig)
@@ -71,19 +86,19 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		return nil, errors.Wrapf(err, "couldn't initialize influxdb http client with http config %+v", httpConfig)
 	}
 
-	if strings.TrimSpace(database) == "" {
+	if strings.TrimSpace(cfg.Database) == "" {
 		return nil, errors.Errorf("influxdb monitoring url %v not database", monitorURL)
 	}
 
 	monitor := influxdbMonitor{
-		database: database,
+		database: cfg.Database,
 		client:   client,
 		logger:   logger,
 	}
 
 	logger = logger.With(
-		"addr", addr,
-		"username", username,
+		"addr", cfg.Addr,
+		"username", cfg.Username,
 		"database", monitor.database,
 	)
 
@@ -107,7 +122,7 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 	}()
 
 	logger.Info().Log(
-		"msg", fmt.Sprintf("influxdb instrumentation writing to %s/%s on user %v", addr, monitor.database, username),
+		"msg", fmt.Sprintf("influxdb instrumentation writing to %s/%s on user %v", cfg.Addr, monitor.database, cfg.Username),
 	)
 
 	return &monitor, nil

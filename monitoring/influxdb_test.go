@@ -49,96 +49,86 @@ func TestParseConfig(t *testing.T) {
 
 		config string
 
-		expectedAddr     string
-		expectedUsername string
-		expectedPassword string
-		expectedDatabase string
+		expectedCfg      *influxMonitorCfg
 		expectedErrorStr string
 	}{
 		{
-			name: "http scheme",
-
+			name:   "http scheme",
 			config: "http://localhost:8086/local",
-
-			expectedAddr:     "http://localhost:8086",
-			expectedUsername: "",
-			expectedPassword: "",
-			expectedDatabase: "local",
+			expectedCfg: &influxMonitorCfg{
+				Addr:     "http://localhost:8086",
+				Username: "",
+				Password: "",
+				Database: "local",
+			},
 		},
 
 		{
-			name: "https scheme",
-
+			name:   "https scheme",
 			config: "https://localhost:8086/local",
-
-			expectedAddr:     "https://localhost:8086",
-			expectedUsername: "",
-			expectedPassword: "",
-			expectedDatabase: "local",
+			expectedCfg: &influxMonitorCfg{
+				Addr:     "https://localhost:8086",
+				Username: "",
+				Password: "",
+				Database: "local",
+			},
 		},
 
 		{
-			name: "has username and no password",
-
+			name:   "has username and no password",
 			config: "https://root@localhost:8086/local",
-
-			expectedAddr:     "https://localhost:8086",
-			expectedUsername: "root",
-			expectedPassword: "",
-			expectedDatabase: "local",
+			expectedCfg: &influxMonitorCfg{
+				Addr:     "https://localhost:8086",
+				Username: "root",
+				Password: "",
+				Database: "local",
+			},
 		},
 
 		{
-			name: "no username and has password",
-
+			name:   "no username and has password",
 			config: "https://:password@localhost:8086/local",
-
-			expectedAddr:     "https://localhost:8086",
-			expectedUsername: "",
-			expectedPassword: "password",
-			expectedDatabase: "local",
+			expectedCfg: &influxMonitorCfg{
+				Addr:     "https://localhost:8086",
+				Username: "",
+				Password: "password",
+				Database: "local",
+			},
 		},
 
 		{
-			name: "has username password",
-
+			name:   "has username and password",
 			config: "https://root:password@localhost:8086/local",
-
-			expectedAddr:     "https://localhost:8086",
-			expectedUsername: "root",
-			expectedPassword: "password",
-			expectedDatabase: "local",
+			expectedCfg: &influxMonitorCfg{
+				Addr:     "https://localhost:8086",
+				Username: "root",
+				Password: "password",
+				Database: "local",
+			},
 		},
 
 		{
-			name: "no database",
-
-			config: "https://localhost:8086/",
-
+			name:             "no database",
+			config:           "https://localhost:8086/",
 			expectedErrorStr: "config format error",
 		},
 
 		{
-			name: "no scheme",
-
-			config: "localhost:8086/local",
-
+			name:             "no scheme",
+			config:           "localhost:8086/local",
 			expectedErrorStr: "config format error",
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			addr, username, password, database, err := parseConfig(test.config)
+			cfg, err := parseConfig(test.config)
 			if err != nil {
 				errorassert.Equal(t, test.expectedErrorStr, err.Error())
 			} else {
 				errorassert.Equal(t, test.expectedErrorStr, "")
 			}
 
-			errorassert.Equal(t, test.expectedAddr, addr)
-			errorassert.Equal(t, test.expectedUsername, username)
-			errorassert.Equal(t, test.expectedPassword, password)
-			errorassert.Equal(t, test.expectedDatabase, database)
+			errorassert.Equal(t, test.expectedCfg, cfg)
 		})
 	}
 }
