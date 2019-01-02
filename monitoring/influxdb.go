@@ -25,16 +25,38 @@ type influxMonitorCfg struct {
 	Password           string
 	Database           string
 	BatchWriteInterval time.Duration
+	CacheEvents        int
 	MaxCacheEvents     int
 }
 
 const (
 	defaultBatchWriteInterval = time.Minute
-	defaultMaxCacheEvents     = 10000
+	// TODO Consider memory size.
+	defaultCacheEvents = 3000
+	// TODO Consider memory size.
+	defaultMaxCacheEvents = 9000
 
 	batchWriteSecondIntervalParamName = "batch-write-second-interval"
 	maxCacheEventsParamName           = "max-cache-events"
+	cacheEventsParamName              = "cache-events"
 )
+
+func getCacheEvents(values url.Values, key string, defaultValue int) (int, error) {
+	events := values.Get(key)
+	if events != "" {
+		number, err := strconv.Atoi(events)
+		if err != nil {
+			return 0, errors.Wrapf(err, "influxdb config parameter %s format error", key)
+		}
+		if number < 0 {
+			return 0, errors.Errorf("influxdb config parameter %s format error", key)
+		}
+
+		return number, nil
+	}
+
+	return defaultValue, nil
+}
 
 func parseInfluxMonitorConfig(config InfluxMonitorConfig) (*influxMonitorCfg, error) {
 	monitorURL := string(config)
@@ -79,23 +101,18 @@ func parseInfluxMonitorConfig(config InfluxMonitorConfig) (*influxMonitorCfg, er
 		batchWriteInterval = defaultBatchWriteInterval
 	}
 
-	var maxCacheEvents int
-	{
-		events := values.Get(maxCacheEventsParamName)
-		if events != "" {
-			number, err := strconv.Atoi(events)
-			if err != nil {
-				return nil, errors.Wrapf(err, "influxdb config parameter %s format error", maxCacheEventsParamName)
-			}
-			if number < 0 {
-				return nil, errors.Errorf("influxdb config parameter %s format error", maxCacheEventsParamName)
-			}
-
-			maxCacheEvents = number
-		}
+	cacheEvents, err := getCacheEvents(values, cacheEventsParamName, defaultCacheEvents)
+	if err != nil {
+		return nil, err
 	}
-	if maxCacheEvents <= 0 {
-		maxCacheEvents = defaultMaxCacheEvents
+
+	maxCacheEvents, err := getCacheEvents(values, maxCacheEventsParamName, defaultMaxCacheEvents)
+	if err != nil {
+		return nil, err
+	}
+
+	if cacheEvents > maxCacheEvents {
+		return nil, errors.Errorf("%v can not be greater than %v", cacheEventsParamName, maxCacheEventsParamName)
 	}
 
 	return &influxMonitorCfg{
@@ -106,15 +123,20 @@ func parseInfluxMonitorConfig(config InfluxMonitorConfig) (*influxMonitorCfg, er
 		Password:           password,
 		Database:           database,
 		BatchWriteInterval: batchWriteInterval,
+		CacheEvents:        cacheEvents,
 		MaxCacheEvents:     maxCacheEvents,
 	}, nil
 }
 
 // NewInfluxdbMonitor creates new monitoring influxdb
 // client. config URL syntax is
-// `https://<username>:<password>@<influxDB host>/<database>?batch-write-second-interval=seconds&max-cache-events=number`
+// `https://<username>:<password>@<influxDB host>/<database>?batch-write-second-interval=seconds&cache-events=number&max-cache-events=number`
 // batch-write-second-interval is optional, default is 60,
-// max-cache-events is optional, default is 10000.
+//   every batch-write-second-interval second exec batch write.
+// cache-events is optional, default is 3000.
+//   if event number reach cache-events then exec batch write.
+// max-cache-events is optional, default is 9000, its must > cache-events,
+//   if the batch write fails and event number reach max-cache-events then clean up the cache (mean the data is lost).
 //
 // Will returns a error if monitorURL is invalid or not absolute.
 //
@@ -138,10 +160,15 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		return nil, errors.Wrapf(err, "couldn't initialize influxdb http client with http config %+v", httpConfig)
 	}
 
-	monitor := influxdbMonitor{
+	monitor := &influxdbMonitor{
 		database: cfg.Database,
 		client:   client,
 		logger:   logger,
+
+		pointChan:          make(chan *influxdb.Point),
+		batchWriteInterval: cfg.BatchWriteInterval,
+		cacheEvents:        cfg.CacheEvents,
+		maxCacheEvents:     cfg.MaxCacheEvents,
 	}
 
 	logger = logger.With(
@@ -159,7 +186,7 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 			// Ignore duration, version
 			_, _, err = client.Ping(5 * time.Second)
 			if err != nil {
-				logger.Warn().Log(
+				_ = logger.Warn().Log(
 					"err", err,
 					"during", "influxdb.Client.Ping",
 					"msg", fmt.Sprintf("couldn't ping influxdb: %v", err),
@@ -170,11 +197,13 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		}
 	}()
 
-	logger.Info().Log(
+	go monitor.batchWriteTicker()
+
+	_ = logger.Info().Log(
 		"msg", fmt.Sprintf("influxdb instrumentation writing to %s://%s@%s/%s", cfg.Scheme, cfg.Username, cfg.Host, monitor.database),
 	)
 
-	return &monitor, nil
+	return monitor, nil
 }
 
 // InfluxdbMonitor implements monitor.Monitor interface, it wraps
@@ -183,6 +212,78 @@ type influxdbMonitor struct {
 	client   influxdb.Client
 	database string
 	logger   log.Logger
+
+	pointChan          chan *influxdb.Point
+	batchWriteInterval time.Duration
+	cacheEvents        int
+	maxCacheEvents     int
+}
+
+func (im influxdbMonitor) batchWriteTicker() {
+	var points []*influxdb.Point
+	t := time.NewTicker(im.batchWriteInterval)
+
+	for {
+		select {
+		case <-t.C:
+			im.batchWriteAndCheckErr(&points)
+
+		case pt := <-im.pointChan:
+			points = append(points, pt)
+
+			if len(points) >= im.cacheEvents {
+				im.batchWriteAndCheckErr(&points)
+			}
+		}
+	}
+}
+
+func (im influxdbMonitor) batchWriteAndCheckErr(points *[]*influxdb.Point) {
+	err := im.batchWrite(points)
+	if err != nil {
+		if len(*points) >= im.maxCacheEvents {
+			*points = nil
+			_ = im.logger.Error().Log(
+				"msg", "influxdb write failed and event number reach max-cache-events, cache events was cleaned up",
+			)
+		}
+	}
+}
+
+// *points will be set to nil if write successful.
+func (im influxdbMonitor) batchWrite(points *[]*influxdb.Point) error {
+	if points == nil || len(*points) == 0 {
+		return nil
+	}
+
+	bp, err := influxdb.NewBatchPoints(influxdb.BatchPointsConfig{
+		Database: im.database,
+	})
+	if err != nil {
+		_ = im.logger.Error().Log(
+			"database", im.database,
+			"err", err,
+			"during", "influxdb.NewBatchPoints",
+			"msg", fmt.Sprintf("NewBatchPoints failed: %v", err),
+		)
+		return nil
+	}
+
+	bp.AddPoints(*points)
+
+	err = im.client.Write(bp)
+	if err != nil {
+		_ = im.logger.Error().Log(
+			"database", im.database,
+			"err", err,
+			"during", "influxdb.client.Write",
+			"msg", fmt.Sprintf("influxdb client write points failed: %v", err),
+		)
+		return errors.Errorf("influxdb client write points failed: %v", err)
+	}
+
+	*points = nil
+	return nil
 }
 
 // InsertRecord part of monitor.Monitor.
@@ -193,42 +294,22 @@ func (im influxdbMonitor) InsertRecord(measurement string, value interface{}, ta
 
 	fields["value"] = value
 
-	bp, err := influxdb.NewBatchPoints(influxdb.BatchPointsConfig{
-		Database: im.database,
-	})
-
-	l := im.logger.With("database", im.database,
-		"measurement", measurement,
-		"value", value,
-		"tags", tags)
-
-	if err != nil {
-		l.Error().Log(
-			"err", err,
-			"during", "influxdb.NewBatchPoints",
-			"msg", fmt.Sprintf("Error initializing batch points for %s: %v", measurement, err),
-		)
-	}
-
 	pt, err := influxdb.NewPoint(measurement, tags, fields, at)
 
 	if err != nil {
-		l.Error().Log(
+		_ = im.logger.Error().Log(
+			"database", im.database,
+			"measurement", measurement,
+			"value", value,
+			"tags", tags,
 			"err", err,
 			"during", "influxdb.NewPoint",
 			"msg", fmt.Sprintf("Error initializing a point for %s: %v", measurement, err),
 		)
+		return
 	}
 
-	bp.AddPoint(pt)
-
-	if err := im.client.Write(bp); err != nil {
-		im.logger.Error().Log(
-			"err", err,
-			"during", "influxdb.Client.Write",
-			"msg", fmt.Sprintf("Error inserting record into %s: %v", measurement, err),
-		)
-	}
+	im.pointChan <- pt
 }
 
 func (im influxdbMonitor) Count(measurement string, value float64, tags map[string]string, fields map[string]interface{}) {

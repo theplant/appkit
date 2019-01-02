@@ -53,7 +53,7 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 		expectedErrContains string
 	}{
 		{
-			name:   "default batch-write-second-interval and max-cache-events",
+			name:   "default batch-write-second-interval, cache-events, max-cache-events",
 			config: "https://root:password@localhost:8086/local",
 			expectedCfg: &influxMonitorCfg{
 				Scheme:             "https",
@@ -63,13 +63,14 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 				Password:           "password",
 				Database:           "local",
 				BatchWriteInterval: defaultBatchWriteInterval,
+				CacheEvents:        defaultCacheEvents,
 				MaxCacheEvents:     defaultMaxCacheEvents,
 			},
 		},
 
 		{
-			name:   "custom batch-write-second-interval and max-cache-events",
-			config: "http://localhost:8086/local?batch-write-second-interval=30&max-cache-events=5000",
+			name:   "custom batch-write-second-interval, cache-events, max-cache-events",
+			config: "http://localhost:8086/local?batch-write-second-interval=30&cache-events=1000&max-cache-events=5000",
 			expectedCfg: &influxMonitorCfg{
 				Scheme:             "http",
 				Host:               "localhost:8086",
@@ -78,6 +79,7 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 				Password:           "",
 				Database:           "local",
 				BatchWriteInterval: time.Second * 30,
+				CacheEvents:        1000,
 				MaxCacheEvents:     5000,
 			},
 		},
@@ -89,9 +91,21 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 		},
 
 		{
+			name:                "cache-events format error",
+			config:              "http://localhost:8086/local?cache-events=abc",
+			expectedErrContains: "influxdb config parameter cache-events format error",
+		},
+
+		{
 			name:                "max-cache-events format error",
 			config:              "http://localhost:8086/local?max-cache-events=-1",
 			expectedErrContains: "influxdb config parameter max-cache-events format error",
+		},
+
+		{
+			name:                "cache-events > max-cache-events error",
+			config:              "http://localhost:8086/local?cache-events=1001&max-cache-events=1000",
+			expectedErrContains: "cache-events can not be greater than max-cache-events",
 		},
 	}
 	for _, test := range tests {
