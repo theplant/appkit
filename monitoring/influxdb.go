@@ -16,14 +16,16 @@ import (
 // InfluxDB
 type InfluxMonitorConfig string
 
-// NewInfluxdbMonitor creates new monitoring influxdb
-// client. config URL syntax is `https://<username>:<password>@<influxDB host>/<database>`
-//
-// Will returns a error if monitorURL is invalid or not absolute.
-//
-// Will not return error if InfluxDB is unavailable, but the returned
-// Monitor will log errors if it cannot push metrics into InfluxDB
-func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor, error) {
+type influxMonitorCfg struct {
+	Scheme   string
+	Host     string
+	Addr     string
+	Username string
+	Password string
+	Database string
+}
+
+func parseInfluxMonitorConfig(config InfluxMonitorConfig) (*influxMonitorCfg, error) {
 	monitorURL := string(config)
 
 	u, err := url.Parse(monitorURL)
@@ -42,10 +44,39 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		password, _ = u.User.Password()
 	}
 
-	httpConfig := influxdb.HTTPConfig{
+	database := strings.TrimLeft(u.Path, "/")
+
+	if strings.TrimSpace(database) == "" {
+		return nil, errors.Errorf("influxdb monitoring url %v not database", monitorURL)
+	}
+
+	return &influxMonitorCfg{
+		Scheme:   u.Scheme,
+		Host:     u.Host,
 		Addr:     fmt.Sprintf("%s://%s", u.Scheme, u.Host),
 		Username: username,
 		Password: password,
+		Database: database,
+	}, nil
+}
+
+// NewInfluxdbMonitor creates new monitoring influxdb
+// client. config URL syntax is `https://<username>:<password>@<influxDB host>/<database>`
+//
+// Will returns a error if monitorURL is invalid or not absolute.
+//
+// Will not return error if InfluxDB is unavailable, but the returned
+// Monitor will log errors if it cannot push metrics into InfluxDB
+func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor, error) {
+	cfg, err := parseInfluxMonitorConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	httpConfig := influxdb.HTTPConfig{
+		Addr:     cfg.Addr,
+		Username: cfg.Username,
+		Password: cfg.Password,
 	}
 
 	client, err := influxdb.NewHTTPClient(httpConfig)
@@ -54,23 +85,17 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		return nil, errors.Wrapf(err, "couldn't initialize influxdb http client with http config %+v", httpConfig)
 	}
 
-	database := strings.TrimLeft(u.Path, "/")
-
-	if strings.TrimSpace(database) == "" {
-		return nil, errors.Errorf("influxdb monitoring url %v not database", monitorURL)
-	}
-
 	monitor := influxdbMonitor{
-		database: database,
+		database: cfg.Database,
 		client:   client,
 		logger:   logger,
 	}
 
 	logger = logger.With(
-		"scheme", u.Scheme,
-		"username", username,
+		"scheme", cfg.Scheme,
+		"username", cfg.Username,
 		"database", monitor.database,
-		"host", u.Host,
+		"host", cfg.Host,
 	)
 
 	// check connectivity to InfluxDB every 5 minutes
@@ -93,7 +118,7 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 	}()
 
 	logger.Info().Log(
-		"msg", fmt.Sprintf("influxdb instrumentation writing to %s://%s@%s/%s", u.Scheme, username, u.Host, monitor.database),
+		"msg", fmt.Sprintf("influxdb instrumentation writing to %s://%s@%s/%s", cfg.Scheme, cfg.Username, cfg.Host, monitor.database),
 	)
 
 	return &monitor, nil
