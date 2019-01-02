@@ -3,6 +3,7 @@ package monitoring
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,13 +18,23 @@ import (
 type InfluxMonitorConfig string
 
 type influxMonitorCfg struct {
-	Scheme   string
-	Host     string
-	Addr     string
-	Username string
-	Password string
-	Database string
+	Scheme             string
+	Host               string
+	Addr               string
+	Username           string
+	Password           string
+	Database           string
+	BatchWriteInterval time.Duration
+	MaxCacheEvents     int
 }
+
+const (
+	defaultBatchWriteInterval = time.Minute
+	defaultMaxCacheEvents     = 10000
+
+	batchWriteSecondIntervalParamName = "batch-write-second-interval"
+	maxCacheEventsParamName           = "max-cache-events"
+)
 
 func parseInfluxMonitorConfig(config InfluxMonitorConfig) (*influxMonitorCfg, error) {
 	monitorURL := string(config)
@@ -50,18 +61,60 @@ func parseInfluxMonitorConfig(config InfluxMonitorConfig) (*influxMonitorCfg, er
 		return nil, errors.Errorf("influxdb monitoring url %v not database", monitorURL)
 	}
 
+	values := u.Query()
+
+	var batchWriteInterval time.Duration
+	{
+		interval := values.Get(batchWriteSecondIntervalParamName)
+		if interval != "" {
+			second, err := strconv.Atoi(interval)
+			if err != nil {
+				return nil, errors.Wrapf(err, "influxdb config parameter %s format error", batchWriteSecondIntervalParamName)
+			}
+
+			batchWriteInterval = time.Duration(second) * time.Second
+		}
+	}
+	if batchWriteInterval == 0 {
+		batchWriteInterval = defaultBatchWriteInterval
+	}
+
+	var maxCacheEvents int
+	{
+		events := values.Get(maxCacheEventsParamName)
+		if events != "" {
+			number, err := strconv.Atoi(events)
+			if err != nil {
+				return nil, errors.Wrapf(err, "influxdb config parameter %s format error", maxCacheEventsParamName)
+			}
+			if number < 0 {
+				return nil, errors.Errorf("influxdb config parameter %s format error", maxCacheEventsParamName)
+			}
+
+			maxCacheEvents = number
+		}
+	}
+	if maxCacheEvents <= 0 {
+		maxCacheEvents = defaultMaxCacheEvents
+	}
+
 	return &influxMonitorCfg{
-		Scheme:   u.Scheme,
-		Host:     u.Host,
-		Addr:     fmt.Sprintf("%s://%s", u.Scheme, u.Host),
-		Username: username,
-		Password: password,
-		Database: database,
+		Scheme:             u.Scheme,
+		Host:               u.Host,
+		Addr:               fmt.Sprintf("%s://%s", u.Scheme, u.Host),
+		Username:           username,
+		Password:           password,
+		Database:           database,
+		BatchWriteInterval: batchWriteInterval,
+		MaxCacheEvents:     maxCacheEvents,
 	}, nil
 }
 
 // NewInfluxdbMonitor creates new monitoring influxdb
-// client. config URL syntax is `https://<username>:<password>@<influxDB host>/<database>`
+// client. config URL syntax is
+// `https://<username>:<password>@<influxDB host>/<database>?batch-write-second-interval=seconds&max-cache-events=number`
+// batch-write-second-interval is optional, default is 60,
+// max-cache-events is optional, default is 10000.
 //
 // Will returns a error if monitorURL is invalid or not absolute.
 //
