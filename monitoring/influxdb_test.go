@@ -1,12 +1,15 @@
 package monitoring
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
 
+	influxdb "github.com/influxdata/influxdb/client/v2"
 	"github.com/theplant/appkit/log"
 	"github.com/theplant/testingutils/errorassert"
+	"github.com/theplant/testingutils/fatalassert"
 )
 
 func TestInvalidInfluxdbConfig(t *testing.T) {
@@ -122,4 +125,188 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 			errorassert.Equal(t, test.expectedCfg, cfg)
 		})
 	}
+}
+
+func newMonitor(client influxdb.Client, cacheEvents int, maxCacheEvents int) *influxdbMonitor {
+	monitor := &influxdbMonitor{
+		database: "test_database",
+		client:   client,
+		logger:   log.NewNopLogger(),
+
+		pointChan:          make(chan *influxdb.Point),
+		batchWriteInterval: time.Second * 1,
+		cacheEvent:         newCacheEvent(cacheEvents, maxCacheEvents),
+	}
+	go monitor.batchWriteTicker()
+
+	return monitor
+}
+
+func insertRecords(monitor Monitor, callTimes int) {
+	for i := 0; i < callTimes; i++ {
+		monitor.InsertRecord("measurement", "value", nil, nil, time.Now())
+	}
+	time.Sleep(time.Millisecond * 100)
+}
+
+func TestInfluxdbBatchWrite(t *testing.T) {
+	var callWriteCount int
+	var pointsLengthList []int
+	mockedClient := &ClientMock{
+		WriteFunc: func(bp influxdb.BatchPoints) error {
+			callWriteCount = callWriteCount + 1
+			pointsLengthList = append(pointsLengthList, len(bp.Points()))
+			return nil
+		},
+	}
+
+	monitor := newMonitor(mockedClient, 5000, 10000)
+
+	insertRecords(monitor, 4000)
+
+	// not reach CacheEvents
+	fatalassert.Equal(t, 0, callWriteCount)
+
+	insertRecords(monitor, 1000)
+
+	// reach CacheEvents
+	fatalassert.Equal(t, 1, callWriteCount)
+	fatalassert.Equal(t, []int{5000}, pointsLengthList)
+
+	// reach CacheEvents twice and remain 1000
+	insertRecords(monitor, 11000)
+
+	fatalassert.Equal(t, 3, callWriteCount)
+	fatalassert.Equal(t, []int{5000, 5000, 5000}, pointsLengthList)
+
+	insertRecords(monitor, 1000)
+
+	// not reach CacheEvents, len(points) = 2000
+	fatalassert.Equal(t, 3, callWriteCount)
+
+	time.Sleep(time.Second * 1)
+
+	// ticker is triggered
+	fatalassert.Equal(t, 4, callWriteCount)
+	fatalassert.Equal(t, []int{5000, 5000, 5000, 2000}, pointsLengthList)
+}
+
+func TestInfluxdbBatchWrite__WriteFailed(t *testing.T) {
+	var callWriteCount int
+	var pointsLengthList []int
+	writeError := errors.New("write error")
+	mockedClient := &ClientMock{
+		WriteFunc: func(bp influxdb.BatchPoints) error {
+			callWriteCount = callWriteCount + 1
+			pointsLengthList = append(pointsLengthList, len(bp.Points()))
+			return writeError
+		},
+	}
+
+	monitor := newMonitor(mockedClient, 5000, 16000)
+
+	insertRecords(monitor, 5000)
+
+	// CurrentCacheEvents = 10000
+	// len(points) = 5000
+
+	fatalassert.Equal(t, 1, callWriteCount)
+	fatalassert.Equal(t, []int{5000}, pointsLengthList)
+
+	insertRecords(monitor, 10000)
+
+	// CurrentCacheEvents = 16000
+	// len(points) = 15000
+
+	fatalassert.Equal(t, 3, callWriteCount)
+	fatalassert.Equal(t, []int{5000, 10000, 15000}, pointsLengthList)
+
+	insertRecords(monitor, 100)
+
+	// CurrentCacheEvents = 16000
+	// len(points) = 15100
+
+	fatalassert.Equal(t, 3, callWriteCount)
+
+	insertRecords(monitor, 2000)
+
+	// CurrentCacheEvents = 16000
+	// len(points) = 16000
+	// 16000 points is lost
+
+	fatalassert.Equal(t, 4, callWriteCount)
+	fatalassert.Equal(t, []int{5000, 10000, 15000, 16000}, pointsLengthList)
+
+	time.Sleep(time.Second * 1)
+
+	// ticker is triggered
+	//
+	// CurrentCacheEvents = 16000
+	// len(points) = 1100
+
+	fatalassert.Equal(t, 5, callWriteCount)
+	fatalassert.Equal(t, []int{5000, 10000, 15000, 16000, 1100}, pointsLengthList)
+
+	insertRecords(monitor, 10000)
+
+	// not reach CurrentCacheEvents(16000)
+	// len(points) = 11100
+	// not trigger batch write
+
+	fatalassert.Equal(t, 5, callWriteCount)
+
+	// the influxdb is recover to normal
+
+	*mockedClient = ClientMock{
+		WriteFunc: func(bp influxdb.BatchPoints) error {
+			callWriteCount = callWriteCount + 1
+			pointsLengthList = append(pointsLengthList, len(bp.Points()))
+			return nil
+		},
+	}
+
+	insertRecords(monitor, 4900)
+
+	// CurrentCacheEvents = 5000
+	// len(points) = 16000
+
+	fatalassert.Equal(t, 6, callWriteCount)
+	fatalassert.Equal(t, []int{5000, 10000, 15000, 16000, 1100, 16000}, pointsLengthList)
+
+	insertRecords(monitor, 5000)
+
+	fatalassert.Equal(t, 7, callWriteCount)
+	fatalassert.Equal(t, []int{5000, 10000, 15000, 16000, 1100, 16000, 5000}, pointsLengthList)
+}
+
+func TestInfluxdbBatchWrite__WriteFailed__CacheEventsAndMaxCacheEventsIsDefault(t *testing.T) {
+	var callWriteCount int
+	var pointsLengthList []int
+	writeError := errors.New("write error")
+	mockedClient := &ClientMock{
+		WriteFunc: func(bp influxdb.BatchPoints) error {
+			callWriteCount = callWriteCount + 1
+			pointsLengthList = append(pointsLengthList, len(bp.Points()))
+			return writeError
+		},
+	}
+
+	monitor := newMonitor(mockedClient, 5000, 10000)
+
+	insertRecords(monitor, 9000)
+
+	fatalassert.Equal(t, 1, callWriteCount)
+	fatalassert.Equal(t, []int{5000}, pointsLengthList)
+
+	insertRecords(monitor, 2000)
+
+	// 10000 points is lost
+
+	fatalassert.Equal(t, 2, callWriteCount)
+	fatalassert.Equal(t, []int{5000, 10000}, pointsLengthList)
+
+	time.Sleep(time.Second)
+
+	fatalassert.Equal(t, 3, callWriteCount)
+	fatalassert.Equal(t, []int{5000, 10000, 1000}, pointsLengthList)
 }
