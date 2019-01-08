@@ -12,7 +12,9 @@ import (
 func TestSpan_Noop(t *testing.T) {
 	ctx := context.Background()
 	err := Span(ctx, "noop", func(_ context.Context, _ opentracing.Span) error {
-		return nil
+		return Span(ctx, "noop inner", func(_ context.Context, _ opentracing.Span) error {
+			return nil
+		})
 	})
 
 	if err != nil {
@@ -24,8 +26,10 @@ func TestSpan_Error(t *testing.T) {
 	ctx := context.Background()
 	expected := errors.New("error")
 
-	err := Span(ctx, "noop", func(_ context.Context, _ opentracing.Span) error {
-		return expected
+	err := Span(ctx, "error", func(_ context.Context, _ opentracing.Span) error {
+		return Span(ctx, "error inner", func(_ context.Context, _ opentracing.Span) error {
+			return expected
+		})
 	})
 
 	if err != expected {
@@ -50,8 +54,9 @@ func TestSpan_Panic(t *testing.T) {
 		}
 	}()
 
-	_ = Span(ctx, "noop", func(_ context.Context, _ opentracing.Span) error {
-		panic(expected)
+	_ = Span(ctx, "panic", func(_ context.Context, _ opentracing.Span) error {
+		return Span(ctx, "panic inner", func(_ context.Context, _ opentracing.Span) error {
+			panic(expected)
+		})
 	})
-
 }
