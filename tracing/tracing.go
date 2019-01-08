@@ -74,10 +74,20 @@ func (l loggedError) Error() string {
 	return l.err.(error).Error()
 }
 
+func (l loggedError) Cause() error {
+	if e, ok := l.err.(error); ok {
+		return e
+	}
+	return nil
+}
+
 // Span will trace execution of function `f` as a (sub-)span of any span on ctx.
 //
-// If `f` returns an error, `Span` will return the same error.
-// If `f` panics, `Span` will also panic with the same error.
+// * If `f` returns an error, `Span` will return the same error.
+//
+// * If `f` panics, `Span` will also panic with the error wrapped in a
+//   `loggedError`, to avoid logging the error multiple times when calls
+//   to `Span` are nested.
 //
 // In either case, the span will be marked with an error, and the
 // error's message will be added to the span log.
