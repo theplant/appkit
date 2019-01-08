@@ -41,7 +41,11 @@ func trace(h http.Handler) http.Handler {
 			opts = append(opts, ext.RPCServerOption(wireContext))
 		}
 
-		Span(ctx, r.URL.Path, func(ctx context.Context, span opentracing.Span) error {
+		// Span will only return an error if the function passed to
+		// Span returns an error. But the function here returns
+		// nil. If h.ServeHTTP panics, Span will also panic, so we
+		// won't see the error anyway.
+		_ = Span(ctx, r.URL.Path, func(ctx context.Context, span opentracing.Span) error {
 			l.Info().Log(
 				"msg", "tracing span",
 				"span_context", span.Context(),
@@ -70,6 +74,13 @@ func (l loggedError) Error() string {
 	return l.err.(error).Error()
 }
 
+// Span will trace execution of function `f` as a (sub-)span of any span on ctx.
+//
+// If `f` returns an error, `Span` will return the same error.
+// If `f` panics, `Span` will also panic with the same error.
+//
+// In either case, the span will be marked with an error, and the
+// error's message will be added to the span log.
 func Span(ctx context.Context, name string, f func(context.Context, opentracing.Span) error, opts ...opentracing.StartSpanOption) (e error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, name, opts...)
 	defer func() {
@@ -111,6 +122,15 @@ type nullCloser struct{}
 
 func (nullCloser) Close() error { return nil }
 
+// Tracer is used to create tracing middleware that uses jager
+// (https://www.jaegertracing.io) for implementation. The tracer is
+// configured via environment variables:
+// https://github.com/jaegertracing/jaeger-client-go#environment-variables
+//
+// The purpose of return the `io.Closer` is to ensure that any pending
+// traces have been sent to the tracing system before the program
+// exits, so `defer closer.Close()` should be called at the top level
+// of your program.
 func Tracer(logger log.Logger) (io.Closer, server.Middleware, error) {
 	logger = logger.With(
 		"context", "appkit/tracing.Tracer",
