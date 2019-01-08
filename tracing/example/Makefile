@@ -1,8 +1,10 @@
 server:
 	JAEGER_SERVICE_NAME=$@ JAEGER_SAMPLER_TYPE=const JAEGER_SAMPLER_PARAM=1 go run server.go
 
+.PHONY: client
+
 client:
-	JAEGER_SERVICE_NAME=$@ JAEGER_SAMPLER_TYPE=const JAEGER_SAMPLER_PARAM=1 go run client.go
+	JAEGER_SERVICE_NAME=$@ JAEGER_SAMPLER_TYPE=const JAEGER_SAMPLER_PARAM=1 go run client/client.go
 
 jaeger:
 	docker run --rm -it --name jaeger \
