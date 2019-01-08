@@ -68,7 +68,7 @@ func NotifyOnPanic(n Notifier, req *http.Request, f func()) (err error) {
 			ctx = context.Background()
 		}
 
-		tracing.Span(ctx, "appkit/errorntoifier.NotifyOnPanic", func(ctx context.Context, span opentracing.Span) error {
+		tracing.Span(ctx, "appkit/errornotifier.NotifyOnPanic", func(ctx context.Context, span opentracing.Span) error {
 			ext.SpanKind.Set(span, ext.SpanKindRPCClientEnum)
 
 			// not using goroutine here in order to keep the whole backtrace in
