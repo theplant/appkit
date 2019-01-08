@@ -2,6 +2,8 @@
 
 * Add `tracing` package
 
+* Make `errornotifier` and `monitoring` middleware trace API requests
+
 # PR [#17](https://github.com/theplant/appkit/pull/17)
 
 * Don't log SQL query *values* in Gorm log adapter
