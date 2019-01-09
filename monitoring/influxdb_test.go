@@ -56,7 +56,7 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 		expectedErrContains string
 	}{
 		{
-			name:   "default batch-write-second-interval, cache-events, max-cache-events",
+			name:   "default batch-write-interval, cache-events, max-cache-events",
 			config: "https://root:password@localhost:8086/local",
 			expectedCfg: &influxMonitorCfg{
 				Scheme:             "https",
@@ -72,8 +72,8 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 		},
 
 		{
-			name:   "custom batch-write-second-interval, cache-events, max-cache-events",
-			config: "http://localhost:8086/local?batch-write-second-interval=30&cache-events=1000&max-cache-events=5000",
+			name:   "custom batch-write-interval, cache-events, max-cache-events",
+			config: "http://localhost:8086/local?batch-write-interval=30s&cache-events=1000&max-cache-events=5000",
 			expectedCfg: &influxMonitorCfg{
 				Scheme:             "http",
 				Host:               "localhost:8086",
@@ -88,9 +88,9 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 		},
 
 		{
-			name:                "batch-write-second-interval format error",
-			config:              "http://localhost:8086/local?batch-write-second-interval=abc",
-			expectedErrContains: "influxdb config parameter batch-write-second-interval format error",
+			name:                "batch-write-interval format error, missing unit in duration",
+			config:              "http://localhost:8086/local?batch-write-interval=30",
+			expectedErrContains: "influxdb config parameter batch-write-interval format error",
 		},
 
 		{

@@ -35,9 +35,9 @@ const (
 	defaultCacheEvents    = 5000
 	defaultMaxCacheEvents = 10000
 
-	batchWriteSecondIntervalParamName = "batch-write-second-interval"
-	maxCacheEventsParamName           = "max-cache-events"
-	cacheEventsParamName              = "cache-events"
+	batchWriteIntervalParamName = "batch-write-interval"
+	maxCacheEventsParamName     = "max-cache-events"
+	cacheEventsParamName        = "cache-events"
 )
 
 func getCacheEvents(values url.Values, key string, defaultValue int) (int, error) {
@@ -86,17 +86,16 @@ func parseInfluxMonitorConfig(config InfluxMonitorConfig) (*influxMonitorCfg, er
 
 	var batchWriteInterval time.Duration
 	{
-		interval := values.Get(batchWriteSecondIntervalParamName)
+		interval := values.Get(batchWriteIntervalParamName)
 		if interval != "" {
-			second, err := strconv.Atoi(interval)
+			duration, err := time.ParseDuration(interval)
 			if err != nil {
-				return nil, errors.Wrapf(err, "influxdb config parameter %s format error", batchWriteSecondIntervalParamName)
+				return nil, errors.Wrapf(err, `influxdb config parameter %s format error, valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".`, batchWriteIntervalParamName)
 			}
-
-			batchWriteInterval = time.Duration(second) * time.Second
+			batchWriteInterval = duration
 		}
 	}
-	if batchWriteInterval == 0 {
+	if batchWriteInterval <= 0 {
 		batchWriteInterval = defaultBatchWriteInterval
 	}
 
@@ -129,9 +128,10 @@ func parseInfluxMonitorConfig(config InfluxMonitorConfig) (*influxMonitorCfg, er
 
 // NewInfluxdbMonitor creates new monitoring influxdb
 // client. config URL syntax is
-// `https://<username>:<password>@<influxDB host>/<database>?batch-write-second-interval=seconds&cache-events=number&max-cache-events=number`
-// batch-write-second-interval is optional, default is 60,
-//   every batch-write-second-interval second exec batch write.
+// `https://<username>:<password>@<influxDB host>/<database>?batch-write-interval=timeDuration&cache-events=number&max-cache-events=number`
+// batch-write-interval is optional, default is 60s,
+// valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
+//   every batch-write-interval exec batch write.
 // cache-events is optional, default is 5000.
 //   if event number reach cache-events then exec batch write.
 // max-cache-events is optional, default is 10000, its must > cache-events,
@@ -285,6 +285,8 @@ func (im influxdbMonitor) batchWriteAndCheckErr(points *[]*influxdb.Point) {
 	}
 }
 
+// Return an error if and only if client write failed.
+//
 // *points will be set to nil if write successful.
 func (im influxdbMonitor) batchWrite(points *[]*influxdb.Point) error {
 	if points == nil || len(*points) == 0 {
@@ -314,7 +316,7 @@ func (im influxdbMonitor) batchWrite(points *[]*influxdb.Point) error {
 			"during", "influxdb.client.Write",
 			"msg", fmt.Sprintf("influxdb client write points failed: %v", err),
 		)
-		return errors.Errorf("influxdb client write points failed: %v", err)
+		return errors.Wrap(err, "influxdb client write points failed")
 	}
 
 	*points = nil
