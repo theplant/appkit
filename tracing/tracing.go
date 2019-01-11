@@ -132,7 +132,7 @@ type nullCloser struct{}
 
 func (nullCloser) Close() error { return nil }
 
-// Tracer is used to create tracing middleware that uses jager
+// Tracer is used to create tracing middleware that uses Jaeger
 // (https://www.jaegertracing.io) for implementation. The tracer is
 // configured via environment variables:
 // https://github.com/jaegertracing/jaeger-client-go#environment-variables
