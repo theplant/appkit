@@ -46,10 +46,10 @@ To configure tracing of incoming HTTP requests:
    the tracing system available to other middleware such as
    `errornotifier` (see below).
 
-# Trace Propagagtion
+# Trace Propagation
 
 The middleware will automatically continue spans if the incoming HTTP
-request has span proagation headers.
+request has span propagation headers.
 
 To pass tracing headers downstream when making HTTP requests use
 `Inject`:
