@@ -6,10 +6,9 @@ import (
 	"strings"
 	"time"
 
+	influxdb "github.com/influxdata/influxdb1-client/v2"
 	"github.com/pkg/errors"
 	"github.com/theplant/appkit/log"
-
-	influxdb "github.com/influxdata/influxdb/client/v2"
 )
 
 // InfluxMonitorConfig type for configuration of Monitor that sinks to
