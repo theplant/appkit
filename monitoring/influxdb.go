@@ -196,7 +196,7 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		}
 	}()
 
-	go monitor.batchWriteTicker()
+	go monitor.batchWriteDaemon()
 
 	_ = logger.Info().Log(
 		"msg", fmt.Sprintf("influxdb instrumentation writing to %s://%s@%s/%s", cfg.Scheme, cfg.Username, cfg.Host, monitor.database),
@@ -218,7 +218,16 @@ type influxdbMonitor struct {
 	maxBufferSize      int
 }
 
-func (im influxdbMonitor) batchWriteTicker() {
+func (im influxdbMonitor) batchWriteDaemon() {
+	defer func() {
+		if r := recover(); r != nil {
+			_ = im.logger.Crit().Log(
+				"msg", "batchWriteDaemon panic",
+				"recover", r,
+			)
+		}
+	}()
+
 	var points []*influxdb.Point
 	nextWriteBufferSize := im.bufferSize
 	after := time.After(im.batchWriteInterval)

@@ -138,7 +138,7 @@ func newMonitor(client influxdb.Client, bufferSize int, maxBufferSize int) *infl
 		bufferSize:         bufferSize,
 		maxBufferSize:      maxBufferSize,
 	}
-	go monitor.batchWriteTicker()
+	go monitor.batchWriteDaemon()
 
 	return monitor
 }
