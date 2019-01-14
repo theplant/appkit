@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	influxdb "github.com/influxdata/influxdb/client/v2"
+	influxdb "github.com/influxdata/influxdb1-client/v2"
 	"github.com/theplant/appkit/log"
 	"github.com/theplant/testingutils/errorassert"
 	"github.com/theplant/testingutils/fatalassert"
