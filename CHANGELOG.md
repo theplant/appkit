@@ -1,3 +1,7 @@
+# PR [#25](https://github.com/theplant/appkit/pull/25)
+
+* Add batch write (buffer) for monitoring/influxdb.
+
 # PR [#27](https://github.com/theplant/appkit/pull/27)
 
 * Change influxdb client import path. Detail in [issue](https://github.com/influxdata/influxdb/issues/11035)
