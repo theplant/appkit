@@ -24,26 +24,26 @@ type influxMonitorCfg struct {
 	Password           string
 	Database           string
 	BatchWriteInterval time.Duration
-	CacheEvents        int
-	MaxCacheEvents     int
+	BufferSize         int
+	MaxBufferSize      int
 }
 
 const (
 	defaultBatchWriteInterval = time.Minute
 	// https://docs.influxdata.com/influxdb/v1.7/concepts/glossary#batch
 	// > InfluxData recommends batch sizes of 5,000-10,000 points, although different use cases may be better served by significantly smaller or larger batches.
-	defaultCacheEvents    = 5000
-	defaultMaxCacheEvents = 10000
+	defaultBufferSize    = 5000
+	defaultMaxBufferSize = 10000
 
 	batchWriteIntervalParamName = "batch-write-interval"
-	maxCacheEventsParamName     = "max-cache-events"
-	cacheEventsParamName        = "cache-events"
+	bufferSizeParamName         = "buffer-size"
+	maxBufferSizeParamName      = "max-buffer-size"
 )
 
-func getCacheEvents(values url.Values, key string, defaultValue int) (int, error) {
-	events := values.Get(key)
-	if events != "" {
-		number, err := strconv.Atoi(events)
+func getBufferSize(values url.Values, key string, defaultValue int) (int, error) {
+	size := values.Get(key)
+	if size != "" {
+		number, err := strconv.Atoi(size)
 		if err != nil {
 			return 0, errors.Wrapf(err, "influxdb config parameter %s format error", key)
 		}
@@ -99,18 +99,18 @@ func parseInfluxMonitorConfig(config InfluxMonitorConfig) (*influxMonitorCfg, er
 		batchWriteInterval = defaultBatchWriteInterval
 	}
 
-	cacheEvents, err := getCacheEvents(values, cacheEventsParamName, defaultCacheEvents)
+	bufferSize, err := getBufferSize(values, bufferSizeParamName, defaultBufferSize)
 	if err != nil {
 		return nil, err
 	}
 
-	maxCacheEvents, err := getCacheEvents(values, maxCacheEventsParamName, defaultMaxCacheEvents)
+	maxBufferSize, err := getBufferSize(values, maxBufferSizeParamName, defaultMaxBufferSize)
 	if err != nil {
 		return nil, err
 	}
 
-	if cacheEvents > maxCacheEvents {
-		return nil, errors.Errorf("%v can not be greater than %v", cacheEventsParamName, maxCacheEventsParamName)
+	if bufferSize > maxBufferSize {
+		return nil, errors.Errorf("%v can not be greater than %v", bufferSizeParamName, maxBufferSizeParamName)
 	}
 
 	return &influxMonitorCfg{
@@ -121,21 +121,21 @@ func parseInfluxMonitorConfig(config InfluxMonitorConfig) (*influxMonitorCfg, er
 		Password:           password,
 		Database:           database,
 		BatchWriteInterval: batchWriteInterval,
-		CacheEvents:        cacheEvents,
-		MaxCacheEvents:     maxCacheEvents,
+		BufferSize:         bufferSize,
+		MaxBufferSize:      maxBufferSize,
 	}, nil
 }
 
 // NewInfluxdbMonitor creates new monitoring influxdb
 // client. config URL syntax is
-// `https://<username>:<password>@<influxDB host>/<database>?batch-write-interval=timeDuration&cache-events=number&max-cache-events=number`
+// `https://<username>:<password>@<influxDB host>/<database>?batch-write-interval=timeDuration&buffer-size=number&max-buffer-size=number`
 // batch-write-interval is optional, default is 60s,
 // valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
 //   every batch-write-interval exec batch write.
-// cache-events is optional, default is 5000.
-//   if event number reach cache-events then exec batch write.
-// max-cache-events is optional, default is 10000, its must > cache-events,
-//   if the batch write fails and event number reach max-cache-events then clean up the cache (mean the data is lost).
+// buffer-size is optional, default is 5000.
+//   if buffered size reach buffer size then exec batch write.
+// max-buffer-size is optional, default is 10000, it must > buffer-size,
+//   if the batch write fails and buffered size reach max-buffer-size then clean up the buffer (mean the data is lost).
 //
 // Will returns a error if monitorURL is invalid or not absolute.
 //
@@ -166,7 +166,8 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 
 		pointChan:          make(chan *influxdb.Point),
 		batchWriteInterval: cfg.BatchWriteInterval,
-		cacheEvent:         newCacheEvent(cfg.CacheEvents, cfg.MaxCacheEvents),
+		bufferSize:         cfg.BufferSize,
+		maxBufferSize:      cfg.MaxBufferSize,
 	}
 
 	logger = logger.With(
@@ -213,75 +214,52 @@ type influxdbMonitor struct {
 
 	pointChan          chan *influxdb.Point
 	batchWriteInterval time.Duration
-	cacheEvent         *cacheEvent
-}
-
-type cacheEvent struct {
-	cacheEvents        int
-	maxCacheEvents     int
-	currentCacheEvents int
-}
-
-func newCacheEvent(cacheEvents int, maxCacheEvents int) *cacheEvent {
-	return &cacheEvent{
-		cacheEvents:        cacheEvents,
-		maxCacheEvents:     maxCacheEvents,
-		currentCacheEvents: cacheEvents,
-	}
-}
-
-func (ce *cacheEvent) CurrentCacheEvents() int {
-	return ce.currentCacheEvents
-}
-
-func (ce *cacheEvent) IncreaseCacheEvents() {
-	currEvents := ce.currentCacheEvents + ce.cacheEvents
-	if currEvents > ce.maxCacheEvents {
-		ce.currentCacheEvents = ce.maxCacheEvents
-	} else {
-		ce.currentCacheEvents = currEvents
-	}
-}
-
-func (ce *cacheEvent) Reset() {
-	// This if is rarely true, so add it.
-	if ce.currentCacheEvents != ce.cacheEvents {
-		ce.currentCacheEvents = ce.cacheEvents
-	}
+	bufferSize         int
+	maxBufferSize      int
 }
 
 func (im influxdbMonitor) batchWriteTicker() {
 	var points []*influxdb.Point
+	nextWriteBufferSize := im.bufferSize
 	t := time.NewTicker(im.batchWriteInterval)
 
 	for {
 		select {
 		case <-t.C:
-			im.batchWriteAndCheckErr(&points)
+			im.batchWriteAndCheckErr(&points, &nextWriteBufferSize)
 
 		case pt := <-im.pointChan:
 			points = append(points, pt)
 
-			if len(points) >= im.cacheEvent.CurrentCacheEvents() {
-				im.batchWriteAndCheckErr(&points)
+			if len(points) >= nextWriteBufferSize {
+				im.batchWriteAndCheckErr(&points, &nextWriteBufferSize)
 			}
 		}
 	}
 }
 
-func (im influxdbMonitor) batchWriteAndCheckErr(points *[]*influxdb.Point) {
+func increaseBufferSize(nextWriteBufferSize, bufferSize, maxBufferSize int) int {
+	newSize := nextWriteBufferSize + bufferSize
+	if newSize > maxBufferSize {
+		return maxBufferSize
+	} else {
+		return newSize
+	}
+}
+
+func (im influxdbMonitor) batchWriteAndCheckErr(points *[]*influxdb.Point, nextWriteBufferSize *int) {
 	err := im.batchWrite(points)
 	if err != nil {
-		im.cacheEvent.IncreaseCacheEvents()
+		*nextWriteBufferSize = increaseBufferSize(*nextWriteBufferSize, im.bufferSize, im.maxBufferSize)
 
-		if len(*points) >= im.cacheEvent.CurrentCacheEvents() {
+		if len(*points) >= im.maxBufferSize {
 			*points = nil
 			_ = im.logger.Error().Log(
-				"msg", "influxdb write failed and event number reach max-cache-events, cache events was cleaned up",
+				"msg", "influxdb write failed and buffered size reach max-buffer-size, buffer was cleaned up",
 			)
 		}
 	} else {
-		im.cacheEvent.Reset()
+		*nextWriteBufferSize = im.bufferSize
 	}
 }
 

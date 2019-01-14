@@ -56,7 +56,7 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 		expectedErrContains string
 	}{
 		{
-			name:   "default batch-write-interval, cache-events, max-cache-events",
+			name:   "default batch-write-interval, buffer-size, max-buffer-size",
 			config: "https://root:password@localhost:8086/local",
 			expectedCfg: &influxMonitorCfg{
 				Scheme:             "https",
@@ -66,14 +66,14 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 				Password:           "password",
 				Database:           "local",
 				BatchWriteInterval: defaultBatchWriteInterval,
-				CacheEvents:        defaultCacheEvents,
-				MaxCacheEvents:     defaultMaxCacheEvents,
+				BufferSize:         defaultBufferSize,
+				MaxBufferSize:      defaultMaxBufferSize,
 			},
 		},
 
 		{
-			name:   "custom batch-write-interval, cache-events, max-cache-events",
-			config: "http://localhost:8086/local?batch-write-interval=30s&cache-events=1000&max-cache-events=5000",
+			name:   "custom batch-write-interval, buffer-size, max-buffer-size",
+			config: "http://localhost:8086/local?batch-write-interval=30s&buffer-size=1000&max-buffer-size=5000",
 			expectedCfg: &influxMonitorCfg{
 				Scheme:             "http",
 				Host:               "localhost:8086",
@@ -82,8 +82,8 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 				Password:           "",
 				Database:           "local",
 				BatchWriteInterval: time.Second * 30,
-				CacheEvents:        1000,
-				MaxCacheEvents:     5000,
+				BufferSize:         1000,
+				MaxBufferSize:      5000,
 			},
 		},
 
@@ -94,21 +94,21 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 		},
 
 		{
-			name:                "cache-events format error",
-			config:              "http://localhost:8086/local?cache-events=abc",
-			expectedErrContains: "influxdb config parameter cache-events format error",
+			name:                "buffer-size format error",
+			config:              "http://localhost:8086/local?buffer-size=abc",
+			expectedErrContains: "influxdb config parameter buffer-size format error",
 		},
 
 		{
-			name:                "max-cache-events format error",
-			config:              "http://localhost:8086/local?max-cache-events=-1",
-			expectedErrContains: "influxdb config parameter max-cache-events format error",
+			name:                "max-buffer-size format error",
+			config:              "http://localhost:8086/local?max-buffer-size=-1",
+			expectedErrContains: "influxdb config parameter max-buffer-size format error",
 		},
 
 		{
-			name:                "cache-events > max-cache-events error",
-			config:              "http://localhost:8086/local?cache-events=1001&max-cache-events=1000",
-			expectedErrContains: "cache-events can not be greater than max-cache-events",
+			name:                "buffer-size > max-buffer-size error",
+			config:              "http://localhost:8086/local?buffer-size=1001&max-buffer-size=1000",
+			expectedErrContains: "buffer-size can not be greater than max-buffer-size",
 		},
 	}
 	for _, test := range tests {
@@ -127,7 +127,7 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 	}
 }
 
-func newMonitor(client influxdb.Client, cacheEvents int, maxCacheEvents int) *influxdbMonitor {
+func newMonitor(client influxdb.Client, bufferSize int, maxBufferSize int) *influxdbMonitor {
 	monitor := &influxdbMonitor{
 		database: "test_database",
 		client:   client,
@@ -135,7 +135,8 @@ func newMonitor(client influxdb.Client, cacheEvents int, maxCacheEvents int) *in
 
 		pointChan:          make(chan *influxdb.Point),
 		batchWriteInterval: time.Second * 1,
-		cacheEvent:         newCacheEvent(cacheEvents, maxCacheEvents),
+		bufferSize:         bufferSize,
+		maxBufferSize:      maxBufferSize,
 	}
 	go monitor.batchWriteTicker()
 
@@ -171,22 +172,22 @@ func TestInfluxdbBatchWrite(t *testing.T) {
 
 	insertRecords(monitor, 4000)
 
-	// not reach CacheEvents
+	// not reach BufferSize
 	assertWriteCalls(t, mockedClient, 0, nil)
 
 	insertRecords(monitor, 1000)
 
-	// reach CacheEvents
+	// reach BufferSize
 	assertWriteCalls(t, mockedClient, 1, []int{5000})
 
 	insertRecords(monitor, 11000)
 
-	// reach CacheEvents twice and remain 1000
+	// reach BufferSize twice and remain 1000
 	assertWriteCalls(t, mockedClient, 3, []int{5000, 5000, 5000})
 
 	insertRecords(monitor, 1000)
 
-	// not reach CacheEvents, len(points) = 2000
+	// not reach BufferSize, len(points) = 2000
 	assertWriteCalls(t, mockedClient, 3, []int{5000, 5000, 5000})
 
 	time.Sleep(time.Second * 1)
@@ -207,28 +208,28 @@ func TestInfluxdbBatchWrite__WriteFailed(t *testing.T) {
 
 	insertRecords(monitor, 5000)
 
-	// CurrentCacheEvents = 10000
+	// nextWriteBufferSize = 10000
 	// len(points) = 5000
 
 	assertWriteCalls(t, mockedClient, 1, []int{5000})
 
 	insertRecords(monitor, 10000)
 
-	// CurrentCacheEvents = 16000
+	// nextWriteBufferSize = 16000
 	// len(points) = 15000
 
 	assertWriteCalls(t, mockedClient, 3, []int{5000, 10000, 15000})
 
 	insertRecords(monitor, 100)
 
-	// CurrentCacheEvents = 16000
+	// nextWriteBufferSize = 16000
 	// len(points) = 15100
 
 	assertWriteCalls(t, mockedClient, 3, []int{5000, 10000, 15000})
 
 	insertRecords(monitor, 2000)
 
-	// CurrentCacheEvents = 16000
+	// nextWriteBufferSize = 16000
 	// len(points) = 16000
 	// 16000 points is lost
 
@@ -238,14 +239,14 @@ func TestInfluxdbBatchWrite__WriteFailed(t *testing.T) {
 
 	// ticker is triggered
 	//
-	// CurrentCacheEvents = 16000
+	// nextWriteBufferSize = 16000
 	// len(points) = 1100
 
 	assertWriteCalls(t, mockedClient, 5, []int{5000, 10000, 15000, 16000, 1100})
 
 	insertRecords(monitor, 10000)
 
-	// not reach CurrentCacheEvents(16000)
+	// not reach nextWriteBufferSize (16000)
 	// len(points) = 11100
 	// not trigger batch write
 
@@ -261,7 +262,7 @@ func TestInfluxdbBatchWrite__WriteFailed(t *testing.T) {
 
 	insertRecords(monitor, 4900)
 
-	// CurrentCacheEvents = 5000
+	// nextWriteBufferSize = 5000
 	// len(points) = 16000
 
 	assertWriteCalls(t, mockedClient, 1, []int{16000})
@@ -271,7 +272,7 @@ func TestInfluxdbBatchWrite__WriteFailed(t *testing.T) {
 	assertWriteCalls(t, mockedClient, 2, []int{16000, 5000})
 }
 
-func TestInfluxdbBatchWrite__WriteFailed__CacheEventsAndMaxCacheEventsIsDefault(t *testing.T) {
+func TestInfluxdbBatchWrite__WriteFailed__BufferSizeAndMaxBufferSizeIsDefault(t *testing.T) {
 	writeError := errors.New("write error")
 	mockedClient := &ClientMock{
 		WriteFunc: func(bp influxdb.BatchPoints) error {
