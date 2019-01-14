@@ -131,7 +131,7 @@ func parseInfluxMonitorConfig(config InfluxMonitorConfig) (*influxMonitorCfg, er
 // `https://<username>:<password>@<influxDB host>/<database>?batch-write-interval=timeDuration&buffer-size=number&max-buffer-size=number`
 // batch-write-interval is optional, default is 60s,
 // valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
-//   every batch-write-interval exec batch write.
+//   exec batch write when we haven't sent data since batch-write-interval ago
 // buffer-size is optional, default is 5000.
 //   if buffered size reach buffer size then exec batch write.
 // max-buffer-size is optional, default is 10000, it must > buffer-size,
@@ -221,12 +221,14 @@ type influxdbMonitor struct {
 func (im influxdbMonitor) batchWriteTicker() {
 	var points []*influxdb.Point
 	nextWriteBufferSize := im.bufferSize
-	t := time.NewTicker(im.batchWriteInterval)
+	after := time.After(im.batchWriteInterval)
 
 	for {
 		select {
-		case <-t.C:
+		case <-after:
 			im.batchWriteAndCheckErr(&points, &nextWriteBufferSize)
+
+			after = time.After(im.batchWriteInterval)
 
 		case pt := <-im.pointChan:
 			points = append(points, pt)
