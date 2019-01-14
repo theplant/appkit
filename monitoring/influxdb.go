@@ -235,7 +235,7 @@ func (im influxdbMonitor) batchWriteDaemon() {
 	for {
 		select {
 		case <-after:
-			im.batchWriteAndCheckErr(&points, &nextWriteBufferSize)
+			im.batchWriteAndHandleErr(&points, &nextWriteBufferSize)
 
 			after = time.After(im.batchWriteInterval)
 
@@ -243,7 +243,7 @@ func (im influxdbMonitor) batchWriteDaemon() {
 			points = append(points, pt)
 
 			if len(points) >= nextWriteBufferSize {
-				im.batchWriteAndCheckErr(&points, &nextWriteBufferSize)
+				im.batchWriteAndHandleErr(&points, &nextWriteBufferSize)
 			}
 		}
 	}
@@ -258,8 +258,21 @@ func increaseBufferSize(nextWriteBufferSize, bufferSize, maxBufferSize int) int 
 	}
 }
 
-func (im influxdbMonitor) batchWriteAndCheckErr(points *[]*influxdb.Point, nextWriteBufferSize *int) {
-	err := im.batchWrite(points)
+// *points will be set to nil if write successful.
+func (im influxdbMonitor) batchWriteAndHandleErr(points *[]*influxdb.Point, nextWriteBufferSize *int) {
+	if points == nil || len(*points) == 0 {
+		return
+	}
+
+	var newPoints []*influxdb.Point
+	pt, err := im.newRecord("influxdb-queue-length", len(*points), nil, nil, time.Now())
+	if err != nil {
+		newPoints = *points
+	} else {
+		newPoints = append(*points, pt)
+	}
+
+	err = im.batchWrite(newPoints)
 	if err != nil {
 		*nextWriteBufferSize = increaseBufferSize(*nextWriteBufferSize, im.bufferSize, im.maxBufferSize)
 
@@ -270,18 +283,12 @@ func (im influxdbMonitor) batchWriteAndCheckErr(points *[]*influxdb.Point, nextW
 			)
 		}
 	} else {
+		*points = nil
 		*nextWriteBufferSize = im.bufferSize
 	}
 }
 
-// Return an error if and only if client write failed.
-//
-// *points will be set to nil if write successful.
-func (im influxdbMonitor) batchWrite(points *[]*influxdb.Point) error {
-	if points == nil || len(*points) == 0 {
-		return nil
-	}
-
+func (im influxdbMonitor) batchWrite(points []*influxdb.Point) error {
 	bp, err := influxdb.NewBatchPoints(influxdb.BatchPointsConfig{
 		Database: im.database,
 	})
@@ -292,10 +299,10 @@ func (im influxdbMonitor) batchWrite(points *[]*influxdb.Point) error {
 			"during", "influxdb.NewBatchPoints",
 			"msg", fmt.Sprintf("NewBatchPoints failed: %v", err),
 		)
-		return nil
+		return errors.Wrap(err, "influxdb.NewBatchPoints failed")
 	}
 
-	bp.AddPoints(*points)
+	bp.AddPoints(points)
 
 	err = im.client.Write(bp)
 	if err != nil {
@@ -308,12 +315,10 @@ func (im influxdbMonitor) batchWrite(points *[]*influxdb.Point) error {
 		return errors.Wrap(err, "influxdb client write points failed")
 	}
 
-	*points = nil
 	return nil
 }
 
-// InsertRecord part of monitor.Monitor.
-func (im influxdbMonitor) InsertRecord(measurement string, value interface{}, tags map[string]string, fields map[string]interface{}, at time.Time) {
+func (im influxdbMonitor) newRecord(measurement string, value interface{}, tags map[string]string, fields map[string]interface{}, at time.Time) (*influxdb.Point, error) {
 	if fields == nil {
 		fields = map[string]interface{}{}
 	}
@@ -332,6 +337,16 @@ func (im influxdbMonitor) InsertRecord(measurement string, value interface{}, ta
 			"during", "influxdb.NewPoint",
 			"msg", fmt.Sprintf("Error initializing a point for %s: %v", measurement, err),
 		)
+		return nil, errors.Wrap(err, "influxdb.NewPoint failed")
+	}
+
+	return pt, nil
+}
+
+// InsertRecord part of monitor.Monitor.
+func (im influxdbMonitor) InsertRecord(measurement string, value interface{}, tags map[string]string, fields map[string]interface{}, at time.Time) {
+	pt, err := im.newRecord(measurement, value, tags, fields, at)
+	if err != nil {
 		return
 	}
 

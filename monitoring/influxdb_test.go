@@ -151,6 +151,8 @@ func insertRecords(monitor Monitor, callTimes int) {
 }
 
 func assertWriteCalls(t *testing.T, clientMock *ClientMock, expectedCallCount int, expectedCallPointsLengths []int) {
+	t.Helper()
+
 	fatalassert.Equal(t, expectedCallCount, len(clientMock.WriteCalls()))
 
 	bps := clientMock.WriteCalls()
@@ -178,22 +180,22 @@ func TestInfluxdbBatchWrite(t *testing.T) {
 	insertRecords(monitor, 1000)
 
 	// reach BufferSize
-	assertWriteCalls(t, mockedClient, 1, []int{5000})
+	assertWriteCalls(t, mockedClient, 1, []int{5001})
 
 	insertRecords(monitor, 11000)
 
 	// reach BufferSize twice and remain 1000
-	assertWriteCalls(t, mockedClient, 3, []int{5000, 5000, 5000})
+	assertWriteCalls(t, mockedClient, 3, []int{5001, 5001, 5001})
 
 	insertRecords(monitor, 1000)
 
 	// not reach BufferSize, len(points) = 2000
-	assertWriteCalls(t, mockedClient, 3, []int{5000, 5000, 5000})
+	assertWriteCalls(t, mockedClient, 3, []int{5001, 5001, 5001})
 
 	time.Sleep(time.Second * 1)
 
 	// ticker is triggered
-	assertWriteCalls(t, mockedClient, 4, []int{5000, 5000, 5000, 2000})
+	assertWriteCalls(t, mockedClient, 4, []int{5001, 5001, 5001, 2001})
 }
 
 func TestInfluxdbBatchWrite__WriteFailed(t *testing.T) {
@@ -211,21 +213,21 @@ func TestInfluxdbBatchWrite__WriteFailed(t *testing.T) {
 	// nextWriteBufferSize = 10000
 	// len(points) = 5000
 
-	assertWriteCalls(t, mockedClient, 1, []int{5000})
+	assertWriteCalls(t, mockedClient, 1, []int{5001})
 
 	insertRecords(monitor, 10000)
 
 	// nextWriteBufferSize = 16000
 	// len(points) = 15000
 
-	assertWriteCalls(t, mockedClient, 3, []int{5000, 10000, 15000})
+	assertWriteCalls(t, mockedClient, 3, []int{5001, 10001, 15001})
 
 	insertRecords(monitor, 100)
 
 	// nextWriteBufferSize = 16000
 	// len(points) = 15100
 
-	assertWriteCalls(t, mockedClient, 3, []int{5000, 10000, 15000})
+	assertWriteCalls(t, mockedClient, 3, []int{5001, 10001, 15001})
 
 	insertRecords(monitor, 2000)
 
@@ -233,7 +235,7 @@ func TestInfluxdbBatchWrite__WriteFailed(t *testing.T) {
 	// len(points) = 16000
 	// 16000 points is lost
 
-	assertWriteCalls(t, mockedClient, 4, []int{5000, 10000, 15000, 16000})
+	assertWriteCalls(t, mockedClient, 4, []int{5001, 10001, 15001, 16001})
 
 	time.Sleep(time.Second * 1)
 
@@ -242,7 +244,7 @@ func TestInfluxdbBatchWrite__WriteFailed(t *testing.T) {
 	// nextWriteBufferSize = 16000
 	// len(points) = 1100
 
-	assertWriteCalls(t, mockedClient, 5, []int{5000, 10000, 15000, 16000, 1100})
+	assertWriteCalls(t, mockedClient, 5, []int{5001, 10001, 15001, 16001, 1101})
 
 	insertRecords(monitor, 10000)
 
@@ -250,7 +252,7 @@ func TestInfluxdbBatchWrite__WriteFailed(t *testing.T) {
 	// len(points) = 11100
 	// not trigger batch write
 
-	assertWriteCalls(t, mockedClient, 5, []int{5000, 10000, 15000, 16000, 1100})
+	assertWriteCalls(t, mockedClient, 5, []int{5001, 10001, 15001, 16001, 1101})
 
 	// the influxdb is recover to normal
 
@@ -265,11 +267,11 @@ func TestInfluxdbBatchWrite__WriteFailed(t *testing.T) {
 	// nextWriteBufferSize = 5000
 	// len(points) = 16000
 
-	assertWriteCalls(t, mockedClient, 1, []int{16000})
+	assertWriteCalls(t, mockedClient, 1, []int{16001})
 
 	insertRecords(monitor, 5000)
 
-	assertWriteCalls(t, mockedClient, 2, []int{16000, 5000})
+	assertWriteCalls(t, mockedClient, 2, []int{16001, 5001})
 }
 
 func TestInfluxdbBatchWrite__WriteFailed__BufferSizeAndMaxBufferSizeIsDefault(t *testing.T) {
@@ -284,15 +286,15 @@ func TestInfluxdbBatchWrite__WriteFailed__BufferSizeAndMaxBufferSizeIsDefault(t 
 
 	insertRecords(monitor, 9000)
 
-	assertWriteCalls(t, mockedClient, 1, []int{5000})
+	assertWriteCalls(t, mockedClient, 1, []int{5001})
 
 	insertRecords(monitor, 2000)
 
 	// 10000 points is lost
 
-	assertWriteCalls(t, mockedClient, 2, []int{5000, 10000})
+	assertWriteCalls(t, mockedClient, 2, []int{5001, 10001})
 
 	time.Sleep(time.Second)
 
-	assertWriteCalls(t, mockedClient, 3, []int{5000, 10000, 1000})
+	assertWriteCalls(t, mockedClient, 3, []int{5001, 10001, 1001})
 }
