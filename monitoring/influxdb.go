@@ -175,6 +175,9 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		"username", cfg.Username,
 		"database", monitor.database,
 		"host", cfg.Host,
+		"batch-write-interval", cfg.BatchWriteInterval.String(),
+		"buffer-size", cfg.BufferSize,
+		"max-buffer-size", cfg.MaxBufferSize,
 	)
 
 	// check connectivity to InfluxDB every 5 minutes
