@@ -21,7 +21,7 @@ func trace(h http.Handler) http.Handler {
 			"context", "appkit/tracing.trace",
 		)
 
-		// Extract tracing propagarion info from HTTP request
+		// Extract tracing propagation info from HTTP request
 		opts := []opentracing.StartSpanOption{}
 		wireContext, err := opentracing.GlobalTracer().Extract(
 			opentracing.HTTPHeaders,
