@@ -6,6 +6,7 @@ import (
 	"fmt"
 	golog "log"
 	"net/http"
+	"time"
 
 	"github.com/theplant/appkit/log"
 )
@@ -30,11 +31,19 @@ func ListenAndServe(config Config, logger log.Logger, handler http.Handler) {
 	logger.Info().Log(
 		"addr", config.Addr,
 		"msg", fmt.Sprintf("HTTP server listening on %s", config.Addr),
+		"wait_us", sinceStart(),
 	)
 	if err := s.ListenAndServe(); err != nil {
 		logger.Error().Log(
 			"msg", fmt.Sprintf("Error in ListenAndServe: %v", err),
+			"serve_us", sinceStart(),
 			"err", err,
 		)
 	}
+}
+
+var start = time.Now()
+
+func sinceStart() int64 {
+	return int64(time.Now().Sub(start) / time.Microsecond)
 }

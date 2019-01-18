@@ -4,6 +4,10 @@
 
 * Make `errornotifier` and `monitoring` middleware trace API requests
 
+# PR [#27](https://github.com/theplant/appkit/pull/27)
+
+* Change influxdb client import path. Detail in [issue](https://github.com/influxdata/influxdb/issues/11035)
+
 # PR [#17](https://github.com/theplant/appkit/pull/17)
 
 * Don't log SQL query *values* in Gorm log adapter
