@@ -2,6 +2,12 @@
 
 * Add batch write (buffer) for monitoring/influxdb.
 
+# PR [#20](https://github.com/theplant/appkit/pull/20)
+
+* Add `tracing` package
+
+* Make `errornotifier` and `monitoring` middleware trace API requests
+
 # PR [#27](https://github.com/theplant/appkit/pull/27)
 
 * Change influxdb client import path. Detail in [issue](https://github.com/influxdata/influxdb/issues/11035)
