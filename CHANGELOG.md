@@ -1,3 +1,7 @@
+# PR [#25](https://github.com/theplant/appkit/pull/25)
+
+* Add batch write (buffer) for monitoring/influxdb.
+
 # PR [#20](https://github.com/theplant/appkit/pull/20)
 
 * Add `tracing` package
