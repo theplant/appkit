@@ -1,3 +1,27 @@
+# PR [#30](https://github.com/theplant/appkit/pull/30)
+
+## Breaking Changes
+
+* `monitoring.NewInfluxdbMonitor` now returns a "close" `func()` to
+  allow termination of InfluxDB buffer introduced in #25.
+
+## Added
+
+* `server.GoListenAndServe` gives control over shut-down of the HTTP
+  server.
+
+
+## Changed Behaviour
+
+* `server.ListenAndServe` now delegates the HTTP server to this
+  function and `server.GoListenAndServe` and *manually* blocks forever
+  by deadlocking itself. This preserves the basic behaviour, but it
+  might change how `ListenAndServe` responded to OS signals.
+
+* Tracing on monitoring middleware was removed. Tracing now occurs on
+  the InfluxDB monitor buffer goroutine that sends batches of points
+  to InfluxDB.
+
 # PR [#25](https://github.com/theplant/appkit/pull/25)
 
 * Add batch write (buffer) for monitoring/influxdb.
