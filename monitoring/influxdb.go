@@ -1,6 +1,7 @@
 package monitoring
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -9,8 +10,11 @@ import (
 	"time"
 
 	influxdb "github.com/influxdata/influxdb1-client/v2"
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 	"github.com/pkg/errors"
 	"github.com/theplant/appkit/log"
+	"github.com/theplant/appkit/tracing"
 )
 
 // InfluxMonitorConfig type for configuration of Monitor that sinks to
@@ -357,18 +361,25 @@ func (im influxdbMonitor) batchWrite(points []*influxdb.Point) error {
 
 	bp.AddPoints(points)
 
-	err = im.client.Write(bp)
-	if err != nil {
-		_ = im.logger.Error().Log(
-			"database", im.database,
-			"err", err,
-			"during", "influxdb.client.Write",
-			"msg", fmt.Sprintf("influxdb client write points failed: %v", err),
-		)
-		return errors.Wrap(err, "influxdb client write points failed")
-	}
+	return tracing.Span(context.Background(), "appkit/monitoring.influxdbMonitor", func(_ context.Context, span opentracing.Span) error {
+		ext.SpanKind.Set(span, ext.SpanKindRPCClientEnum)
+		ext.Component.Set(span, "influxdb-buffer")
+		ext.PeerService.Set(span, "InfluxDB")
+		ext.DBInstance.Set(span, im.database)
+		span.LogKV("point-count", len(points))
 
-	return nil
+		err = im.client.Write(bp)
+		if err != nil {
+			_ = im.logger.Error().Log(
+				"database", im.database,
+				"err", err,
+				"during", "influxdb.client.Write",
+				"msg", fmt.Sprintf("influxdb client write points failed: %v", err),
+			)
+			return errors.Wrap(err, "influxdb client write points failed")
+		}
+		return err
+	})
 }
 
 func (im influxdbMonitor) newRecord(measurement string, value interface{}, tags map[string]string, fields map[string]interface{}, at time.Time) (*influxdb.Point, error) {
