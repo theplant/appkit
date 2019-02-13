@@ -28,7 +28,7 @@ func newServer(config Config, logger log.Logger, handler http.Handler) *http.Ser
 }
 
 // ListenAndServe will start a HTTP server on config.Addr, using
-// handler to handle requests. This fuction will never return.
+// handler to handle requests. This function will never return.
 func ListenAndServe(config Config, logger log.Logger, handler http.Handler) {
 	GoListenAndServe(config, logger, handler)
 	// Ignore io.Closer, listen forever
