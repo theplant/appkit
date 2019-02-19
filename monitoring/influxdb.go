@@ -1,15 +1,20 @@
 package monitoring
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	influxdb "github.com/influxdata/influxdb1-client/v2"
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 	"github.com/pkg/errors"
 	"github.com/theplant/appkit/log"
+	"github.com/theplant/appkit/tracing"
 )
 
 // InfluxMonitorConfig type for configuration of Monitor that sinks to
@@ -137,14 +142,21 @@ func parseInfluxMonitorConfig(config InfluxMonitorConfig) (*influxMonitorCfg, er
 // max-buffer-size is optional, default is 10000, it must > buffer-size,
 //   if the batch write fails and buffered size reach max-buffer-size then clean up the buffer (mean the data is lost).
 //
-// Will returns a error if monitorURL is invalid or not absolute.
+// The second return value is a function that will cause the batching
+// goroutine to write buffered points, then terminate. This function
+// will block until one attempt to flush the buffer completes (either
+// success or failure).
 //
-// Will not return error if InfluxDB is unavailable, but the returned
-// Monitor will log errors if it cannot push metrics into InfluxDB
-func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor, error) {
+// The third return value will be non-nil if monitorURL is invalid or
+// not absolute.
+//
+// This function will not return error if InfluxDB is unavailable, but
+// the returned Monitor will log errors if it cannot push metrics into
+// InfluxDB.
+func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor, func(), error) {
 	cfg, err := parseInfluxMonitorConfig(config)
 	if err != nil {
-		return nil, err
+		return nil, func() {}, err
 	}
 
 	httpConfig := influxdb.HTTPConfig{
@@ -156,8 +168,10 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 	client, err := influxdb.NewHTTPClient(httpConfig)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "couldn't initialize influxdb http client with http config %+v", httpConfig)
+		return nil, func() {}, errors.Wrapf(err, "couldn't initialize influxdb http client with http config %+v", httpConfig)
 	}
+
+	logger = logger.With("context", "appkit/monitoring.influxdb")
 
 	monitor := &influxdbMonitor{
 		database: cfg.Database,
@@ -168,16 +182,17 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		batchWriteInterval: cfg.BatchWriteInterval,
 		bufferSize:         cfg.BufferSize,
 		maxBufferSize:      cfg.MaxBufferSize,
+
+		done: &sync.WaitGroup{},
 	}
+
+	running := make(chan struct{})
 
 	logger = logger.With(
 		"scheme", cfg.Scheme,
 		"username", cfg.Username,
 		"database", monitor.database,
 		"host", cfg.Host,
-		"batch-write-interval", cfg.BatchWriteInterval.String(),
-		"buffer-size", cfg.BufferSize,
-		"max-buffer-size", cfg.MaxBufferSize,
 	)
 
 	// check connectivity to InfluxDB every 5 minutes
@@ -194,18 +209,36 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 					"msg", fmt.Sprintf("couldn't ping influxdb: %v", err),
 				)
 			}
+			select {
+			case <-t.C:
+				// continue
+			case <-running:
+				_ = logger.Info().Log(
+					"during", "influxdb.Client.Ping",
+					"msg", "influxdb monitor closed, stopping influxdb pings",
+				)
+				return
+			}
 
-			<-t.C
 		}
 	}()
 
-	go monitor.batchWriteDaemon()
+	go monitor.batchWriteDaemon(running)
 
 	_ = logger.Info().Log(
 		"msg", fmt.Sprintf("influxdb instrumentation writing to %s://%s@%s/%s", cfg.Scheme, cfg.Username, cfg.Host, monitor.database),
+		"batch-write-interval", cfg.BatchWriteInterval.String(),
+		"buffer-size", cfg.BufferSize,
+		"max-buffer-size", cfg.MaxBufferSize,
 	)
 
-	return monitor, nil
+	return monitor, func() {
+		_ = logger.Debug().Log(
+			"msg", "closing influxdb monitor",
+		)
+		close(running)
+		monitor.done.Wait()
+	}, nil
 }
 
 // InfluxdbMonitor implements monitor.Monitor interface, it wraps
@@ -219,13 +252,24 @@ type influxdbMonitor struct {
 	batchWriteInterval time.Duration
 	bufferSize         int
 	maxBufferSize      int
+
+	// We need a pointer here since:
+	//
+	// > A WaitGroup must not be copied after first use.
+	//
+	// https://godoc.org/sync#WaitGroup
+	done *sync.WaitGroup
 }
 
-func (im influxdbMonitor) batchWriteDaemon() {
+func (im influxdbMonitor) batchWriteDaemon(running chan struct{}) {
+	im.done.Add(1)
 	defer func() {
+		im.done.Done()
+
 		if r := recover(); r != nil {
 			_ = im.logger.Crit().Log(
-				"msg", "batchWriteDaemon panic",
+				"during", "influxdb.influxdbMonitor.batchWriteDaemon",
+				"msg", fmt.Sprintf("panic: %v", r),
 				"recover", r,
 			)
 		}
@@ -248,8 +292,18 @@ func (im influxdbMonitor) batchWriteDaemon() {
 			if len(points) >= nextWriteBufferSize {
 				im.batchWriteAndHandleErr(&points, &nextWriteBufferSize)
 			}
+
+		case <-running:
+			_ = im.logger.Debug().Log(
+				"msg", "influxdb monitor buffer closed, flushing buffer",
+				"point_count", len(points),
+			)
+			im.batchWriteAndHandleErr(&points, &nextWriteBufferSize)
+
+			return
 		}
 	}
+
 }
 
 func increaseBufferSize(nextWriteBufferSize, bufferSize, maxBufferSize int) int {
@@ -307,18 +361,25 @@ func (im influxdbMonitor) batchWrite(points []*influxdb.Point) error {
 
 	bp.AddPoints(points)
 
-	err = im.client.Write(bp)
-	if err != nil {
-		_ = im.logger.Error().Log(
-			"database", im.database,
-			"err", err,
-			"during", "influxdb.client.Write",
-			"msg", fmt.Sprintf("influxdb client write points failed: %v", err),
-		)
-		return errors.Wrap(err, "influxdb client write points failed")
-	}
+	return tracing.Span(context.Background(), "appkit/monitoring.influxdbMonitor", func(_ context.Context, span opentracing.Span) error {
+		ext.SpanKind.Set(span, ext.SpanKindRPCClientEnum)
+		ext.Component.Set(span, "influxdb-buffer")
+		ext.PeerService.Set(span, "InfluxDB")
+		ext.DBInstance.Set(span, im.database)
+		span.LogKV("point-count", len(points))
 
-	return nil
+		err = im.client.Write(bp)
+		if err != nil {
+			_ = im.logger.Error().Log(
+				"database", im.database,
+				"err", err,
+				"during", "influxdb.client.Write",
+				"msg", fmt.Sprintf("influxdb client write points failed: %v", err),
+			)
+			return errors.Wrap(err, "influxdb client write points failed")
+		}
+		return err
+	})
 }
 
 func (im influxdbMonitor) newRecord(measurement string, value interface{}, tags map[string]string, fields map[string]interface{}, at time.Time) (*influxdb.Point, error) {

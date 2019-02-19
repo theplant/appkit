@@ -8,12 +8,9 @@ import (
 	"strconv"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
 	"github.com/theplant/appkit/contexts"
 	"github.com/theplant/appkit/contexts/trace"
 	"github.com/theplant/appkit/log"
-	"github.com/theplant/appkit/tracing"
 )
 
 type key int
@@ -31,15 +28,9 @@ func WithMonitor(m Monitor) func(h http.Handler) http.Handler {
 			defer func() {
 				interval := time.Now().Sub(start)
 				go func() {
-					tracing.Span(r.Context(), "appkit/monitoring.WithMonitor", func(ctx context.Context, span opentracing.Span) error {
-						ext.SpanKind.Set(span, ext.SpanKindRPCClientEnum)
-
-						tags := tagsForRequest(r)
-						fields := fieldsForContext(r.Context())
-						m.InsertRecord("request", float64(interval/time.Millisecond), tags, fields, start)
-						return nil
-					})
-
+					tags := tagsForRequest(r)
+					fields := fieldsForContext(r.Context())
+					m.InsertRecord("request", float64(interval/time.Millisecond), tags, fields, start)
 				}()
 			}()
 

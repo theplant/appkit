@@ -3,6 +3,7 @@ package monitoring
 import (
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,7 +22,7 @@ func TestInvalidInfluxdbConfig(t *testing.T) {
 	}
 
 	for reason, config := range cases {
-		_, err := NewInfluxdbMonitor(InfluxMonitorConfig(config), logger)
+		_, _, err := NewInfluxdbMonitor(InfluxMonitorConfig(config), logger)
 
 		if err == nil || !strings.Contains(err.Error(), reason) {
 			t.Fatalf("no error creating influxdb monitor with config url %s", config)
@@ -40,7 +41,7 @@ func TestValidInfluxdbConfig(t *testing.T) {
 	}
 
 	for _, config := range cases {
-		_, err := NewInfluxdbMonitor(InfluxMonitorConfig(config), logger)
+		_, _, err := NewInfluxdbMonitor(InfluxMonitorConfig(config), logger)
 
 		if err != nil {
 			t.Fatalf("error creating influxdb monitor with config url %s", config)
@@ -137,8 +138,11 @@ func newMonitor(client influxdb.Client, bufferSize int, maxBufferSize int) *infl
 		batchWriteInterval: time.Second * 1,
 		bufferSize:         bufferSize,
 		maxBufferSize:      maxBufferSize,
+
+		done: &sync.WaitGroup{},
 	}
-	go monitor.batchWriteDaemon()
+
+	go monitor.batchWriteDaemon(nil)
 
 	return monitor
 }
