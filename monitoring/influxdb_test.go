@@ -58,7 +58,7 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 	}{
 		{
 			name:   "default batch-write-interval, buffer-size, max-buffer-size",
-			config: "https://root:password@localhost:8086/local",
+			config: "https://root:password@localhost:8086/local?service-name=api",
 			expectedCfg: &influxMonitorCfg{
 				Scheme:             "https",
 				Host:               "localhost:8086",
@@ -69,6 +69,7 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 				BatchWriteInterval: defaultBatchWriteInterval,
 				BufferSize:         defaultBufferSize,
 				MaxBufferSize:      defaultMaxBufferSize,
+				ServiceName:        "api",
 			},
 		},
 
@@ -85,6 +86,7 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 				BatchWriteInterval: time.Second * 30,
 				BufferSize:         1000,
 				MaxBufferSize:      5000,
+				ServiceName:        "",
 			},
 		},
 
@@ -128,8 +130,8 @@ func TestParseInfluxMonitorConfig(t *testing.T) {
 	}
 }
 
-func newMonitor(client influxdb.Client, bufferSize int, maxBufferSize int) *influxdbMonitor {
-	monitor := &influxdbMonitor{
+func newMonitor(client influxdb.Client, bufferSize int, maxBufferSize int, serviceName string) (monitor *influxdbMonitor, closeFunc func()) {
+	monitor = &influxdbMonitor{
 		database: "test_database",
 		client:   client,
 		logger:   log.NewNopLogger(),
@@ -140,11 +142,17 @@ func newMonitor(client influxdb.Client, bufferSize int, maxBufferSize int) *infl
 		maxBufferSize:      maxBufferSize,
 
 		done: &sync.WaitGroup{},
+
+		serviceName: serviceName,
 	}
 
-	go monitor.batchWriteDaemon(nil)
+	running := make(chan struct{})
+	go monitor.batchWriteDaemon(running)
 
-	return monitor
+	return monitor, func() {
+		close(running)
+		monitor.done.Wait()
+	}
 }
 
 func insertRecords(monitor Monitor, callTimes int) {
@@ -174,7 +182,7 @@ func TestInfluxdbBatchWrite(t *testing.T) {
 		},
 	}
 
-	monitor := newMonitor(mockedClient, 5000, 10000)
+	monitor, _ := newMonitor(mockedClient, 5000, 10000, "")
 
 	insertRecords(monitor, 4000)
 
@@ -210,7 +218,7 @@ func TestInfluxdbBatchWrite__WriteFailed(t *testing.T) {
 		},
 	}
 
-	monitor := newMonitor(mockedClient, 5000, 16000)
+	monitor, _ := newMonitor(mockedClient, 5000, 16000, "")
 
 	insertRecords(monitor, 5000)
 
@@ -286,7 +294,7 @@ func TestInfluxdbBatchWrite__WriteFailed__BufferSizeAndMaxBufferSizeIsDefault(t 
 		},
 	}
 
-	monitor := newMonitor(mockedClient, 5000, 10000)
+	monitor, _ := newMonitor(mockedClient, 5000, 10000, "")
 
 	insertRecords(monitor, 9000)
 
@@ -301,4 +309,60 @@ func TestInfluxdbBatchWrite__WriteFailed__BufferSizeAndMaxBufferSizeIsDefault(t 
 	time.Sleep(time.Second)
 
 	assertWriteCalls(t, mockedClient, 3, []int{5001, 10001, 1001})
+}
+
+func TestServiceName(t *testing.T) {
+	var bp influxdb.BatchPoints
+
+	mockedClient := &ClientMock{
+		WriteFunc: func(p influxdb.BatchPoints) error {
+			bp = p
+			return nil
+		},
+	}
+
+	// tag is nil
+
+	monitor, cf := newMonitor(mockedClient, 1, 1, "api")
+
+	monitor.InsertRecord("request", 100, nil, nil, time.Time{})
+	cf()
+
+	fatalassert.Equal(t, 1, len(mockedClient.WriteCalls()))
+	fatalassert.Equal(t, bp.Points()[0].Tags(), map[string]string{
+		"service": "api",
+	})
+	fatalassert.Equal(t, bp.Points()[1].Name(), "influxdb-queue-length")
+	fatalassert.Equal(t, bp.Points()[1].Tags(), map[string]string{
+		"service": "api",
+	})
+
+	// tag is not nil
+
+	monitor, cf = newMonitor(mockedClient, 1, 1, "api")
+
+	monitor.InsertRecord("request", 100, map[string]string{"tag1": "value1"}, nil, time.Time{})
+	cf()
+
+	fatalassert.Equal(t, 2, len(mockedClient.WriteCalls()))
+	fatalassert.Equal(t, bp.Points()[0].Tags(), map[string]string{
+		"tag1":    "value1",
+		"service": "api",
+	})
+	fatalassert.Equal(t, bp.Points()[1].Tags(), map[string]string{
+		"service": "api",
+	})
+
+	// service name is empty
+
+	monitor, cf = newMonitor(mockedClient, 1, 1, "")
+
+	monitor.InsertRecord("request", 100, map[string]string{"tag1": "value1"}, nil, time.Time{})
+	cf()
+
+	fatalassert.Equal(t, 3, len(mockedClient.WriteCalls()))
+	fatalassert.Equal(t, bp.Points()[0].Tags(), map[string]string{
+		"tag1": "value1",
+	})
+	fatalassert.Equal(t, bp.Points()[1].Tags(), map[string]string{})
 }

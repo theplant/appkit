@@ -31,6 +31,7 @@ type influxMonitorCfg struct {
 	BatchWriteInterval time.Duration
 	BufferSize         int
 	MaxBufferSize      int
+	ServiceName        string
 }
 
 const (
@@ -43,6 +44,8 @@ const (
 	batchWriteIntervalParamName = "batch-write-interval"
 	bufferSizeParamName         = "buffer-size"
 	maxBufferSizeParamName      = "max-buffer-size"
+
+	serviceNameParamName = "service-name"
 )
 
 func getBufferSize(values url.Values, key string, defaultValue int) (int, error) {
@@ -128,12 +131,13 @@ func parseInfluxMonitorConfig(config InfluxMonitorConfig) (*influxMonitorCfg, er
 		BatchWriteInterval: batchWriteInterval,
 		BufferSize:         bufferSize,
 		MaxBufferSize:      maxBufferSize,
+		ServiceName:        values.Get(serviceNameParamName),
 	}, nil
 }
 
 // NewInfluxdbMonitor creates new monitoring influxdb
 // client. config URL syntax is
-// `https://<username>:<password>@<influxDB host>/<database>?batch-write-interval=timeDuration&buffer-size=number&max-buffer-size=number`
+// `https://<username>:<password>@<influxDB host>/<database>?batch-write-interval=timeDuration&buffer-size=number&max-buffer-size=number&service-name=name`
 // batch-write-interval is optional, default is 60s,
 // valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
 //   exec batch write when we haven't sent data since batch-write-interval ago
@@ -141,6 +145,8 @@ func parseInfluxMonitorConfig(config InfluxMonitorConfig) (*influxMonitorCfg, er
 //   if buffered size reach buffer size then exec batch write.
 // max-buffer-size is optional, default is 10000, it must > buffer-size,
 //   if the batch write fails and buffered size reach max-buffer-size then clean up the buffer (mean the data is lost).
+// service-name is optional
+//   if set then all points will add tag service=service-name.
 //
 // The second return value is a function that will cause the batching
 // goroutine to write buffered points, then terminate. This function
@@ -184,6 +190,8 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		maxBufferSize:      cfg.MaxBufferSize,
 
 		done: &sync.WaitGroup{},
+
+		serviceName: cfg.ServiceName,
 	}
 
 	running := make(chan struct{})
@@ -230,6 +238,7 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		"batch-write-interval", cfg.BatchWriteInterval.String(),
 		"buffer-size", cfg.BufferSize,
 		"max-buffer-size", cfg.MaxBufferSize,
+		"service-name", cfg.ServiceName,
 	)
 
 	return monitor, func() {
@@ -259,6 +268,8 @@ type influxdbMonitor struct {
 	//
 	// https://godoc.org/sync#WaitGroup
 	done *sync.WaitGroup
+
+	serviceName string
 }
 
 func (im influxdbMonitor) batchWriteDaemon(running chan struct{}) {
@@ -388,6 +399,14 @@ func (im influxdbMonitor) newRecord(measurement string, value interface{}, tags 
 	}
 
 	fields["value"] = value
+
+	if im.serviceName != "" {
+		if tags == nil {
+			tags = map[string]string{}
+		}
+
+		tags["service"] = im.serviceName
+	}
 
 	pt, err := influxdb.NewPoint(measurement, tags, fields, at)
 
