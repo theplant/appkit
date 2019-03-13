@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/theplant/appkit/contexts"
 	"github.com/theplant/appkit/contexts/trace"
 	"github.com/theplant/appkit/log"
@@ -89,6 +90,9 @@ func fieldsForContext(ctx context.Context) map[string]interface{} {
 
 	if reqID, ok := trace.RequestTrace(ctx); ok {
 		fields["req_id"] = fmt.Sprintf("%v", reqID)
+	}
+	if span := opentracing.SpanFromContext(ctx); span != nil {
+		fields["span_context"] = fmt.Sprintf("%v", span.Context())
 	}
 
 	return fields

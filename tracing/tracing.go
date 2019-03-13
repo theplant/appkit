@@ -9,6 +9,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/theplant/appkit/contexts"
+	ctxtrace "github.com/theplant/appkit/contexts/trace"
 	"github.com/theplant/appkit/log"
 	"github.com/theplant/appkit/server"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
@@ -54,6 +55,9 @@ func trace(h http.Handler) http.Handler {
 			ext.SpanKind.Set(span, ext.SpanKindRPCServerEnum)
 			ext.HTTPMethod.Set(span, r.Method)
 			ext.HTTPUrl.Set(span, r.URL.String())
+			if ctxtraceID, ok := ctxtrace.RequestTrace(ctx); ok {
+				span.LogKV("req_id", ctxtraceID)
+			}
 
 			h.ServeHTTP(w, r.WithContext(ctx))
 			s, _ := contexts.HTTPStatus(ctx)

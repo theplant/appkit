@@ -1,3 +1,9 @@
+# PR [#31](https://github.com/theplant/appkit/pull/31)
+
+* Log request id in trace log.
+* Log trace id in InfluxDB.
+* Add `service-name` config for InfluxDB.
+
 # PR [#30](https://github.com/theplant/appkit/pull/30)
 
 ## Breaking Changes
