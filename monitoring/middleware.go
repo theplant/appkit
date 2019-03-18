@@ -12,6 +12,7 @@ import (
 	"github.com/theplant/appkit/contexts"
 	"github.com/theplant/appkit/contexts/trace"
 	"github.com/theplant/appkit/log"
+	"github.com/theplant/appkit/server"
 )
 
 type key int
@@ -25,15 +26,18 @@ func WithMonitor(m Monitor) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
+			var recoveredStatusCode *int
 
 			defer func() {
 				interval := time.Now().Sub(start)
 				go func() {
-					tags := tagsForRequest(r)
+					tags := tagsForRequest(r, recoveredStatusCode)
 					fields := fieldsForContext(r.Context())
 					m.InsertRecord("request", float64(interval/time.Millisecond), tags, fields, start)
 				}()
 			}()
+
+			defer server.RecoverAndSetStatusCode(&recoveredStatusCode)
 
 			h.ServeHTTP(w, r.WithContext(Context(r.Context(), m)))
 		})
@@ -63,7 +67,7 @@ func ForceContext(ctx context.Context) Monitor {
 	return NewLogMonitor(logger)
 }
 
-func tagsForRequest(r *http.Request) map[string]string {
+func tagsForRequest(r *http.Request, recoveredStatusCode *int) map[string]string {
 	path := scrubPath(r.URL.Path)
 	tags := map[string]string{
 		"path":           path,
@@ -71,6 +75,11 @@ func tagsForRequest(r *http.Request) map[string]string {
 	}
 
 	ctx := r.Context()
+
+	if recoveredStatusCode != nil {
+		tags["response_code"] = strconv.Itoa(*recoveredStatusCode)
+		return tags
+	}
 
 	if status, ok := contexts.HTTPStatus(ctx); ok {
 		tags["response_code"] = strconv.Itoa(status)
