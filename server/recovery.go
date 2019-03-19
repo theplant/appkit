@@ -12,11 +12,11 @@ import (
 
 func Recovery(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		var statusCode *int
+		var statusCode int
 
 		defer func() {
-			if statusCode != nil {
-				rw.WriteHeader(*statusCode)
+			if statusCode != 0 {
+				rw.WriteHeader(statusCode)
 			}
 		}()
 
@@ -26,10 +26,9 @@ func Recovery(h http.Handler) http.Handler {
 	})
 }
 
-func RecoverAndSetStatusCode(statusCode **int) {
+func RecoverAndSetStatusCode(statusCode *int) {
 	if err := recover(); err != nil {
-		*statusCode = new(int)
-		**statusCode = http.StatusInternalServerError
+		*statusCode = http.StatusInternalServerError
 		panic(err)
 	}
 }

@@ -26,7 +26,7 @@ func WithMonitor(m Monitor) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
-			var recoveredStatusCode *int
+			var recoveredStatusCode int
 
 			defer func() {
 				interval := time.Now().Sub(start)
@@ -67,7 +67,7 @@ func ForceContext(ctx context.Context) Monitor {
 	return NewLogMonitor(logger)
 }
 
-func tagsForRequest(r *http.Request, recoveredStatusCode *int) map[string]string {
+func tagsForRequest(r *http.Request, recoveredStatusCode int) map[string]string {
 	path := scrubPath(r.URL.Path)
 	tags := map[string]string{
 		"path":           path,
@@ -76,8 +76,8 @@ func tagsForRequest(r *http.Request, recoveredStatusCode *int) map[string]string
 
 	ctx := r.Context()
 
-	if recoveredStatusCode != nil {
-		tags["response_code"] = strconv.Itoa(*recoveredStatusCode)
+	if recoveredStatusCode != 0 {
+		tags["response_code"] = strconv.Itoa(recoveredStatusCode)
 		return tags
 	}
 
