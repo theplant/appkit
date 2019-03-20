@@ -74,6 +74,11 @@ func tagsForRequest(r *http.Request, recoveredStatusCode int) map[string]string 
 		"request_method": r.Method,
 	}
 
+	via := r.Header.Get("X-Via")
+	if via != "" {
+		tags["via"] = via
+	}
+
 	ctx := r.Context()
 
 	if recoveredStatusCode != 0 {
