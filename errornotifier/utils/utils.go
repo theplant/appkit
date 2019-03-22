@@ -11,6 +11,7 @@ import (
 type notice struct {
 	Error   interface{}
 	Request *http.Request
+	Context map[string]interface{}
 }
 
 // BufferNotifier implements errornotifier.Notifier interface.
@@ -20,10 +21,8 @@ type BufferNotifier struct {
 }
 
 // Notify part of errornotifier.Notifier.
-func (b *BufferNotifier) Notify(err interface{}, req *http.Request) error {
-	b.Notices = append(b.Notices, notice{Error: err, Request: req})
-
-	return nil
+func (b *BufferNotifier) Notify(err interface{}, req *http.Request, context map[string]interface{}) {
+	b.Notices = append(b.Notices, notice{Error: err, Request: req, Context: context})
 }
 
 // TestNotifier is notifier that will call T.Fatal on any notification
@@ -32,7 +31,6 @@ type TestNotifier struct {
 }
 
 // Notify part of errornotifier.Notifier
-func (t TestNotifier) Notify(err interface{}, req *http.Request) error {
+func (t TestNotifier) Notify(err interface{}, req *http.Request, context map[string]interface{}) {
 	t.T.Fatal(err)
-	return nil
 }

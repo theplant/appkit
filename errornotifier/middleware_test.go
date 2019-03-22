@@ -37,6 +37,10 @@ func TestRecoverMiddleware(t *testing.T) {
 	if bufferNotifier.Notices[0].Error != errHandlerException {
 		t.Fatalf("Got unexpected error: %v ", bufferNotifier.Notices[0].Error)
 	}
+
+	if bufferNotifier.Notices[0].Context == nil {
+		t.Fatalf("Context shouldn't be nil")
+	}
 }
 
 // newRecoverTestServer prepares a test HTTP server that has the Recover

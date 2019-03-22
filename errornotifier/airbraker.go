@@ -47,7 +47,7 @@ type AirbrakeConfig struct {
 // Returns error if no Airbrake configuration or airbrake
 // configuration is invalid
 //
-// Notify is async, call close to ensure send data to Airbrake.
+// Notify is async, call close to wait send data to Airbrake.
 func NewAirbrakeNotifier(c AirbrakeConfig) (Notifier, io.Closer, error) {
 	if c.Token == "" {
 		return nil, nil, errors.New("blank Airbrake token")
