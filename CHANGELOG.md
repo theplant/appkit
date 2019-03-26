@@ -2,6 +2,55 @@
 
 * Add Package appkit/credentials
 
+# PR [#33](https://github.com/theplant/appkit/pull/33)
+
+* `monitoring.WithMonitor` middleware now collects `X-Via`
+  request header value as `via` tag value.
+
+# PR [#31](https://github.com/theplant/appkit/pull/31)
+
+* Log request id in trace log.
+* Log trace id in InfluxDB.
+* Add `service-name` config for InfluxDB.
+
+# PR [#30](https://github.com/theplant/appkit/pull/30)
+
+## Breaking Changes
+
+* `monitoring.NewInfluxdbMonitor` now returns a "close" `func()` to
+  allow termination of InfluxDB buffer introduced in #25.
+
+## Added
+
+* `server.GoListenAndServe` gives control over shut-down of the HTTP
+  server.
+
+
+## Changed Behaviour
+
+* `server.ListenAndServe` now delegates the HTTP server to this
+  function and `server.GoListenAndServe` and *manually* blocks forever
+  by deadlocking itself. This preserves the basic behaviour, but it
+  might change how `ListenAndServe` responded to OS signals.
+
+* Tracing on monitoring middleware was removed. Tracing now occurs on
+  the InfluxDB monitor buffer goroutine that sends batches of points
+  to InfluxDB.
+
+# PR [#25](https://github.com/theplant/appkit/pull/25)
+
+* Add batch write (buffer) for monitoring/influxdb.
+
+# PR [#20](https://github.com/theplant/appkit/pull/20)
+
+* Add `tracing` package
+
+* Make `errornotifier` and `monitoring` middleware trace API requests
+
+# PR [#27](https://github.com/theplant/appkit/pull/27)
+
+* Change influxdb client import path. Detail in [issue](https://github.com/influxdata/influxdb/issues/11035)
+
 # PR [#17](https://github.com/theplant/appkit/pull/17)
 
 * Don't log SQL query *values* in Gorm log adapter

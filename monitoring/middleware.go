@@ -8,9 +8,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/theplant/appkit/contexts"
 	"github.com/theplant/appkit/contexts/trace"
 	"github.com/theplant/appkit/log"
+	"github.com/theplant/appkit/server"
 )
 
 type key int
@@ -24,16 +26,18 @@ func WithMonitor(m Monitor) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
+			var recoveredStatusCode int
 
 			defer func() {
 				interval := time.Now().Sub(start)
 				go func() {
-					tags := tagsForRequest(r)
+					tags := tagsForRequest(r, recoveredStatusCode)
 					fields := fieldsForContext(r.Context())
 					m.InsertRecord("request", float64(interval/time.Millisecond), tags, fields, start)
-
 				}()
 			}()
+
+			defer server.RecoverAndSetStatusCode(&recoveredStatusCode)
 
 			h.ServeHTTP(w, r.WithContext(Context(r.Context(), m)))
 		})
@@ -63,14 +67,24 @@ func ForceContext(ctx context.Context) Monitor {
 	return NewLogMonitor(logger)
 }
 
-func tagsForRequest(r *http.Request) map[string]string {
+func tagsForRequest(r *http.Request, recoveredStatusCode int) map[string]string {
 	path := scrubPath(r.URL.Path)
 	tags := map[string]string{
 		"path":           path,
 		"request_method": r.Method,
 	}
 
+	via := r.Header.Get("X-Via")
+	if via != "" {
+		tags["via"] = via
+	}
+
 	ctx := r.Context()
+
+	if recoveredStatusCode != 0 {
+		tags["response_code"] = strconv.Itoa(recoveredStatusCode)
+		return tags
+	}
 
 	if status, ok := contexts.HTTPStatus(ctx); ok {
 		tags["response_code"] = strconv.Itoa(status)
@@ -90,6 +104,9 @@ func fieldsForContext(ctx context.Context) map[string]interface{} {
 
 	if reqID, ok := trace.RequestTrace(ctx); ok {
 		fields["req_id"] = fmt.Sprintf("%v", reqID)
+	}
+	if span := opentracing.SpanFromContext(ctx); span != nil {
+		fields["span_context"] = fmt.Sprintf("%v", span.Context())
 	}
 
 	return fields

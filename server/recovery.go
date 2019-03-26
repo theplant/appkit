@@ -6,16 +6,29 @@
 
 package server
 
-import "net/http"
+import (
+	"net/http"
+)
 
 func Recovery(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		var statusCode int
+
 		defer func() {
-			if err := recover(); err != nil {
-				rw.WriteHeader(http.StatusInternalServerError)
-				panic(err)
+			if statusCode != 0 {
+				rw.WriteHeader(statusCode)
 			}
 		}()
+
+		defer RecoverAndSetStatusCode(&statusCode)
+
 		h.ServeHTTP(rw, r)
 	})
+}
+
+func RecoverAndSetStatusCode(statusCode *int) {
+	if err := recover(); err != nil {
+		*statusCode = http.StatusInternalServerError
+		panic(err)
+	}
 }
