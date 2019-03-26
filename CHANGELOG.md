@@ -14,6 +14,11 @@
 * Add log req_id and span_context to `errornotifier.NotifyOnPanic` and
   `Recover` middleware.
 
+# PR [#33](https://github.com/theplant/appkit/pull/33)
+
+* `monitoring.WithMonitor` middleware now collects `X-Via`
+  request header value as `via` tag value.
+
 # PR [#31](https://github.com/theplant/appkit/pull/31)
 
 * Log request id in trace log.
