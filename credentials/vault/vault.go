@@ -22,6 +22,9 @@ type Config struct {
 	AuthPath  string `default:"auth/kubernetes/login"`
 	Role      string
 	Autorenew bool
+
+	Token         string
+	TokenFilename string `default:"/var/run/secrets/kubernetes.io/serviceaccount/token"`
 }
 
 func NewVaultClient(logger log.Logger, config Config) (*api.Client, error) {
@@ -40,24 +43,27 @@ func NewVaultClient(logger log.Logger, config Config) (*api.Client, error) {
 		Address: config.Address,
 	}
 
-	tokenFilename := "/var/run/secrets/kubernetes.io/serviceaccount/token"
+	token := config.Token
+	if len(token) == 0 {
+		tokBytes, err := ioutil.ReadFile(config.TokenFilename)
 
-	tokBytes, err := ioutil.ReadFile(tokenFilename)
-	if os.IsNotExist(err) {
-		logger.Info().Log("msg", "no token file, returning nil client")
-		return nil, nil
+		if os.IsNotExist(err) {
+			logger.Info().Log("msg", "no token and no token file, returning nil client")
+			return nil, nil
+		}
+
+		token = string(tokBytes)
 	}
 
 	client, err := api.NewClient(&cfg)
-
 	if err != nil {
 		return nil, errors.Wrap(err, "error in vault/api.NewClient")
 	}
 
 	if config.Autorenew {
-		go autorenewAuthentication(client, string(tokBytes), config, logger)
+		go autorenewAuthentication(client, token, config, logger)
 	} else {
-		_, err = fetchAuthToken(client, string(tokBytes), config, logger)
+		_, err = fetchAuthToken(client, token, config, logger)
 	}
 
 	return client, err
