@@ -1,3 +1,19 @@
+# PR [#36](https://github.com/theplant/appkit/pull/36)
+
+## Breaking Changes
+
+* `errornotifier.NewAirbrakeNotifier` func now returns `io.Closer` to
+  wait send data to Aribrake.
+* Add a new parameter `context` to `errornotifier.Notifier.Notify` allow
+  add context when call `Notify`.
+
+## Changes
+
+* Upgrade Airbrake package.
+* Change `airbrakeNotifier.Notify` func to async.
+* Add log req_id and span_context to `errornotifier.NotifyOnPanic` and
+  `Recover` middleware.
+
 # PR [#33](https://github.com/theplant/appkit/pull/33)
 
 * `monitoring.WithMonitor` middleware now collects `X-Via`
