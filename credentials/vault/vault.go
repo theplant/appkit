@@ -18,10 +18,10 @@ type ServiceAccount struct {
 }
 
 type Config struct {
-	Address   string
+	Address   string `default:"https://vault.vault.svc.cluster.local"`
 	AuthPath  string `default:"auth/kubernetes/login"`
 	Role      string
-	Autorenew bool
+	Autorenew bool `default:"true"`
 
 	Token         string
 	TokenFilename string `default:"/var/run/secrets/kubernetes.io/serviceaccount/token"`
