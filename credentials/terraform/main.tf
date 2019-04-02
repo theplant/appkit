@@ -1,5 +1,7 @@
 provider "vault" {}
-provider "kubernetes" {}
+provider "kubernetes" {
+  config_context = "docker-for-desktop"
+}
 
 locals {
   ns-name = "${var.k8s-namespace}.${var.name}"

@@ -1,6 +1,10 @@
 NS=credentials-test
 
-VAULT_PORT=$(shell kubectl --namespace $(NS) get service/vault -o='jsonpath={.spec.ports[0].nodePort}')
+K8S_CONTEXT=docker-for-desktop
+
+KUBECTL=kubectl --context $(K8S_CONTEXT) --namespace $(NS)
+
+VAULT_PORT=$(shell $(KUBECTL) get service/vault -o='jsonpath={.spec.ports[0].nodePort}')
 
 VAULT_TOKEN=vault_root_token
 
@@ -9,7 +13,6 @@ VAULT_ADDR=http://localhost:$(VAULT_PORT)
 CURL=curl --header "X-Vault-Token: $(VAULT_TOKEN)" -i
 VAULT=$(VAULT_ADDR)/v1
 
-KUBECTL=kubectl --namespace $(NS)
 
 TERRAFORM=VAULT_ADDR=$(VAULT_ADDR) VAULT_TOKEN=$(VAULT_TOKEN) terraform
 
@@ -31,10 +34,10 @@ dockerimage: main Dockerfile
 teardown:
 	$(TERRAFORM) destroy -auto-approve || echo "did my best..."
 	rm -f terraform.tfstate*
-	kubectl delete namespace $(NS)
+	$(KUBECTL) delete namespace $(NS)
 
 bootstrap:
-	kubectl create namespace $(NS) || echo "ignoring existing namespace"
+	kubectl --context $(K8S_CONTEXT) create namespace $(NS) || echo "ignoring existing namespace"
 	$(KUBECTL) delete configmap vault-config || echo "skipping deletion"
 	$(KUBECTL) create configmap vault-config --from-literal=VAULT_DEV_ROOT_TOKEN_ID=$(VAULT_TOKEN)
 	$(KUBECTL) apply -f vault.yaml
