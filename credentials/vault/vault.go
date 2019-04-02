@@ -38,6 +38,7 @@ func NewVaultClient(logger log.Logger, config Config) (*api.Client, error) {
 
 	logger.Debug().Log(
 		"msg", "creating vault client",
+		"token_filename", config.TokenFilename,
 	)
 
 	cfg := api.Config{
