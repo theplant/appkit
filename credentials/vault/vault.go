@@ -18,10 +18,11 @@ type ServiceAccount struct {
 }
 
 type Config struct {
-	Address   string `default:"https://vault.vault.svc.cluster.local"`
-	AuthPath  string `default:"auth/kubernetes/login"`
-	Role      string
-	Autorenew bool `default:"true"`
+	Address  string `default:"https://vault.vault.svc.cluster.local"`
+	AuthPath string `default:"auth/kubernetes/login"`
+	Role     string
+	// *bool instead of bool to allow configuring the value to false
+	Autorenew *bool `default:"true"`
 
 	Token         string
 	TokenFilename string `default:"/var/run/secrets/kubernetes.io/serviceaccount/token"`
@@ -60,7 +61,7 @@ func NewVaultClient(logger log.Logger, config Config) (*api.Client, error) {
 		return nil, errors.Wrap(err, "error in vault/api.NewClient")
 	}
 
-	if config.Autorenew {
+	if config.Autorenew == nil || *config.Autorenew {
 		go autorenewAuthentication(client, token, config, logger)
 	} else {
 		_, err = fetchAuthToken(client, token, config, logger)

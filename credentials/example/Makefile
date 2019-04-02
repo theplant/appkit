@@ -81,7 +81,7 @@ run: dockerimage
 	$(KUBECTL) delete job app || echo "skipping deletion"
 	$(KUBECTL) delete job app-failing || echo "skipping deletion"
 	$(KUBECTL) delete configmap app || echo "skipping deletion"
-	$(KUBECTL) create configmap app --from-literal=VAULT_AUTHN_ADDRESS=http://vault:8200 --from-literal=VAULT_AUTHN_ROLE=$(shell terraform output vault-authn-role) --from-literal=VAULT_AWSPATH=$(shell terraform output vault-aws-path)
+	$(KUBECTL) create configmap app --from-literal=VAULT_AUTHN_ADDRESS=http://vault:8200 --from-literal=VAULT_AUTHN_ROLE=$(shell terraform output vault-authn-role) --from-literal=VAULT_AWSPATH=$(shell terraform output vault-aws-path) --from-literal=VAULT_AUTHN_AUTORENEW="false"
 	$(KUBECTL) apply -f app.yaml
 
 ########################################

@@ -23,7 +23,7 @@ func main() {
 		fmt.Println(err)
 	}
 
-	fmt.Printf("%#v\n", config)
+	fmt.Printf("%#v (autorenew: %v)\n", config, *config.Authn.Autorenew)
 
 	vault, err := vault.NewVaultClient(logger, config.Authn)
 
