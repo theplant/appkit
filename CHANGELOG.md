@@ -1,3 +1,7 @@
+# PR [#19](https://github.com/theplant/appkit/pull/19)
+
+* Add Package appkit/credentials
+
 # PR [#36](https://github.com/theplant/appkit/pull/36)
 
 ## Breaking Changes

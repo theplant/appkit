@@ -133,3 +133,8 @@ by the *back-end* to other APIs and services.
 For now, It's implemented with [OpenTracing](https://opentracing.io)
 and expects to talk to a [Jaeger](https://www.jaegertracing.io)
 back-end.
+
+# Credentials
+
+Package to provide single interface for acquiring AWS (-only, for now)
+credentials for apps running on different platforms.
