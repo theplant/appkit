@@ -6,22 +6,31 @@ package errornotifier
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"runtime/debug"
 
+	"github.com/airbrake/gobrake"
 	"github.com/theplant/appkit/log"
-	gobrake "gopkg.in/airbrake/gobrake.v1"
 )
 
 // Notifier defines an interface for reporting error
 type Notifier interface {
-	Notify(interface{}, *http.Request) error
+	Notify(err interface{}, r *http.Request, context map[string]interface{})
 }
 
 // airbrakeNotifier is a Notifier that sends messages to Airbrake,
 // constructed via NewAirbrakeNotifier
 type airbrakeNotifier struct {
-	*gobrake.Notifier
+	notifier *gobrake.Notifier
+}
+
+func (n *airbrakeNotifier) Notify(e interface{}, req *http.Request, context map[string]interface{}) {
+	notice := n.notifier.Notice(e, req, 1)
+	for k, v := range context {
+		notice.Context[k] = v
+	}
+	n.notifier.SendNoticeAsync(notice)
 }
 
 // AirbrakeConfig is struct to embed into application config to allow
@@ -37,18 +46,24 @@ type AirbrakeConfig struct {
 //
 // Returns error if no Airbrake configuration or airbrake
 // configuration is invalid
-func NewAirbrakeNotifier(c AirbrakeConfig) (Notifier, error) {
+//
+// Notify is async, call close to wait send data to Airbrake.
+func NewAirbrakeNotifier(c AirbrakeConfig) (Notifier, io.Closer, error) {
 	if c.Token == "" {
-		return nil, errors.New("blank Airbrake token")
+		return nil, nil, errors.New("blank Airbrake token")
 	}
 
 	if c.ProjectID <= 0 {
-		return nil, fmt.Errorf("invalid Airbrake project id: %d", c.ProjectID)
+		return nil, nil, fmt.Errorf("invalid Airbrake project id: %d", c.ProjectID)
 	}
 
-	airbrake := gobrake.NewNotifier(c.ProjectID, c.Token)
-	airbrake.SetContext("environment", c.Environment)
-	return airbrake, nil
+	notifier := gobrake.NewNotifierWithOptions(&gobrake.NotifierOptions{
+		ProjectId:   c.ProjectID,
+		ProjectKey:  c.Token,
+		Environment: c.Environment,
+	})
+
+	return &airbrakeNotifier{notifier: notifier}, notifier, nil
 }
 
 type logNotifier struct {
@@ -56,7 +71,7 @@ type logNotifier struct {
 }
 
 // Notify is part of Notifier interface
-func (n *logNotifier) Notify(val interface{}, req *http.Request) error {
+func (n *logNotifier) Notify(val interface{}, req *http.Request, context map[string]interface{}) {
 	logger := n.logger
 	if req != nil {
 		l, ok := log.FromContext(req.Context())
@@ -65,8 +80,9 @@ func (n *logNotifier) Notify(val interface{}, req *http.Request) error {
 		}
 	}
 
-	return logger.Error().Log(
+	_ = logger.Error().Log(
 		"err", val,
+		"context", context,
 		"msg", fmt.Sprintf("error notification: %v", val),
 		"stacktrace", string(debug.Stack()),
 	)

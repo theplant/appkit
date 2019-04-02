@@ -7,6 +7,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
+	ctxtrace "github.com/theplant/appkit/contexts/trace"
 	"github.com/theplant/appkit/log"
 	"github.com/theplant/appkit/tracing"
 )
@@ -68,12 +69,18 @@ func NotifyOnPanic(n Notifier, req *http.Request, f func()) (err error) {
 			ctx = context.Background()
 		}
 
-		tracing.Span(ctx, "appkit/errornotifier.NotifyOnPanic", func(ctx context.Context, span opentracing.Span) error {
+		_ = tracing.Span(ctx, "appkit/errornotifier.NotifyOnPanic", func(ctx context.Context, span opentracing.Span) error {
 			ext.SpanKind.Set(span, ext.SpanKindRPCClientEnum)
 
-			// not using goroutine here in order to keep the whole backtrace in
-			// airbrake report
-			return n.Notify(err, req)
+			notifyCtx := map[string]interface{}{}
+			if ctxtraceID, ok := ctxtrace.RequestTrace(ctx); ok {
+				notifyCtx["req_id"] = ctxtraceID
+			}
+			notifyCtx["span_context"] = fmt.Sprintf("%v", span.Context())
+
+			n.Notify(err, req, notifyCtx)
+
+			return nil
 		})
 		return
 	}()
