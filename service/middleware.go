@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/goji/httpauth"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/jinzhu/configor"
 	newrelic "github.com/newrelic/go-agent"
@@ -16,17 +17,6 @@ import (
 	"github.com/theplant/appkit/server"
 	"github.com/theplant/appkit/tracing"
 )
-
-type APIConfig struct {
-	// CORS, allowed front-end request
-	RawAllowedOrigins string `required:"true"`
-	AllowedOrigins    []string
-	AllowCredentials  bool
-
-	//HTTP Auth
-	HTTPAuthName     string
-	HTTPAuthPassword string
-}
 
 func middleware(logger log.Logger) (server.Middleware, io.Closer, error) {
 
@@ -41,6 +31,7 @@ func middleware(logger log.Logger) (server.Middleware, io.Closer, error) {
 	appconf := MustGetAppConfig()
 
 	return server.Compose(
+			httpAuthMiddleware(logger),
 			corsMiddleware(logger),
 			NewRelicMiddleWare(logger, appconf.NewRelicAppName, appconf.NewRelicAPIKey),
 			monitoring.WithMonitor(monitor),
@@ -280,4 +271,34 @@ func corsMiddleware(logger log.Logger) server.Middleware {
 	)
 
 	return c.Handler
+}
+
+////////////////////////////////////////////////////////////
+// HTTP Basic Auth
+
+type httpAuthConfig struct {
+	Username string
+	Password string
+}
+
+func httpAuthMiddleware(logger log.Logger) server.Middleware {
+	config := httpAuthConfig{}
+
+	err := configor.New(&configor.Config{ENVPrefix: "BASICAUTH"}).Load(&config)
+	if err != nil {
+		panic(err)
+	}
+
+	if config.Username == "" {
+		logger.Warn().Log(
+			"msg", "not enabling HTTP basic auth middleware, username is blank",
+		)
+		return server.IdMiddleware
+	}
+
+	logger.Info().Log(
+		"msg", "enabling HTTP basic auth middleware",
+		"username", config.Username,
+	)
+	return httpauth.SimpleBasicAuth(config.Username, config.Password)
 }
