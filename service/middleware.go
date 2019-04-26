@@ -29,18 +29,6 @@ type APIConfig struct {
 }
 
 func middleware(logger log.Logger) (server.Middleware, io.Closer, error) {
-	apiCfg := MustGetAPIConfig()
-
-	c := cors.New(cors.Options{
-		AllowedOrigins:   apiCfg.AllowedOrigins,
-		AllowCredentials: apiCfg.AllowCredentials,
-	})
-	//c.Log = stdlog.New(os.Stdout, "", stdlog.Llongfile)
-	logger.Info().Log(
-		"msg", "init cors successfully",
-		"allowed_origins", strings.Join(apiCfg.AllowedOrigins, ","),
-		"allow_credentials", apiCfg.AllowCredentials,
-	)
 
 	tC, tracer, err := tracing.Tracer(logger)
 	if err != nil {
@@ -51,8 +39,9 @@ func middleware(logger log.Logger) (server.Middleware, io.Closer, error) {
 	errorNotifier, eC := MustGetErrorNotifier(logger)
 	monitor, mC := MustGetMonitor(logger)
 	appconf := MustGetAppConfig()
+
 	return server.Compose(
-			c.Handler,
+			corsMiddleware(logger),
 			NewRelicMiddleWare(logger, appconf.NewRelicAppName, appconf.NewRelicAPIKey),
 			monitoring.WithMonitor(monitor),
 			errornotifier.Recover(errorNotifier),
@@ -248,25 +237,47 @@ func (f FuncCloser) Close() error {
 	return err
 }
 
-var _apiConfig *APIConfig
+////////////////////////////////////////////////////////////
+// CORS
 
-func MustGetAPIConfig() APIConfig {
-	if _apiConfig != nil {
-		return *_apiConfig
-	}
+type corsConfig struct {
+	RawAllowedOrigins string
+	AllowedOrigins    []string
+	AllowCredentials  bool
+}
 
-	apiConfig := APIConfig{}
-	err := configor.New(&configor.Config{ENVPrefix: "API"}).Load(&apiConfig)
+func corsMiddleware(logger log.Logger) server.Middleware {
+	config := corsConfig{}
+
+	err := configor.New(&configor.Config{ENVPrefix: "API"}).Load(&config)
 	if err != nil {
 		panic(err)
 	}
 
-	apiConfig.AllowedOrigins = strings.Split(apiConfig.RawAllowedOrigins, ",")
-	for i, allowedOrigin := range apiConfig.AllowedOrigins {
-		apiConfig.AllowedOrigins[i] = strings.TrimSpace(allowedOrigin)
+	if config.RawAllowedOrigins == "" {
+		logger.Warn().Log(
+			"msg", "not enabling CORS middleware, CORS configuration is blank",
+			"raw_allowed_origins", config.RawAllowedOrigins,
+			"allowed_credentials", config.AllowCredentials,
+		)
+		return server.IdMiddleware
 	}
 
-	_apiConfig = &apiConfig
+	config.AllowedOrigins = strings.Split(config.RawAllowedOrigins, ",")
+	for i, allowedOrigin := range config.AllowedOrigins {
+		config.AllowedOrigins[i] = strings.TrimSpace(allowedOrigin)
+	}
 
-	return apiConfig
+	c := cors.New(cors.Options{
+		AllowedOrigins:   config.AllowedOrigins,
+		AllowCredentials: config.AllowCredentials,
+	})
+
+	logger.Info().Log(
+		"msg", "enabling CORS middleware",
+		"allowed_origins", strings.Join(config.AllowedOrigins, ","),
+		"allow_credentials", config.AllowCredentials,
+	)
+
+	return c.Handler
 }

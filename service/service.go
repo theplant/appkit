@@ -21,14 +21,6 @@ func logErr(l log.Logger, f func() error) {
 func ListenAndServe(app func(*http.ServeMux) error) {
 	logger := log.Default()
 
-	mux := http.NewServeMux()
-
-	if err := app(mux); err != nil {
-		err = errors.Wrap(err, "error configuring service")
-		logger.WithError(err).Log()
-		return
-	}
-
 	m, c, err := middleware(logger)
 	if err != nil {
 		err = errors.Wrap(err, "error configuring service middleware")
@@ -36,6 +28,14 @@ func ListenAndServe(app func(*http.ServeMux) error) {
 		return
 	}
 	defer c.Close()
+
+	mux := http.NewServeMux()
+
+	if err := app(mux); err != nil {
+		err = errors.Wrap(err, "error configuring service")
+		logger.WithError(err).Log()
+		return
+	}
 
 	hc := server.GoListenAndServe(
 		server.Config{
