@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -18,10 +19,13 @@ func logErr(l log.Logger, f func() error) {
 	}
 }
 
-func ListenAndServe(app func(*http.ServeMux) error) {
-	logger := log.Default()
+func ListenAndServe(app func(context.Context, *http.ServeMux) error) {
+	ctx, closer := serviceContext()
+	defer closer.Close()
 
-	m, c, err := middleware(logger)
+	logger := log.ForceContext(ctx)
+
+	m, c, err := middleware(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "error configuring service middleware")
 		logger.WithError(err).Log()
@@ -31,7 +35,7 @@ func ListenAndServe(app func(*http.ServeMux) error) {
 
 	mux := http.NewServeMux()
 
-	if err := app(mux); err != nil {
+	if err := app(ctx, mux); err != nil {
 		err = errors.Wrap(err, "error configuring service")
 		logger.WithError(err).Log()
 		return

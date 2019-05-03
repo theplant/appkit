@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"strings"
@@ -18,7 +19,8 @@ import (
 	"github.com/theplant/appkit/tracing"
 )
 
-func middleware(logger log.Logger) (server.Middleware, io.Closer, error) {
+func middleware(ctx context.Context) (server.Middleware, io.Closer, error) {
+	logger := log.ForceContext(ctx)
 
 	tC, tracer, err := tracing.Tracer(logger)
 	if err != nil {
@@ -27,19 +29,17 @@ func middleware(logger log.Logger) (server.Middleware, io.Closer, error) {
 	}
 
 	errorNotifier, eC := MustGetErrorNotifier(logger)
-	monitor, mC := MustGetMonitor(logger)
 	appconf := MustGetAppConfig()
 
 	return server.Compose(
 			httpAuthMiddleware(logger),
 			corsMiddleware(logger),
 			NewRelicMiddleWare(logger, appconf.NewRelicAppName, appconf.NewRelicAPIKey),
-			monitoring.WithMonitor(monitor),
+			monitoring.WithMonitor(monitoring.ForceContext(ctx)),
 			errornotifier.Recover(errorNotifier),
 			tracer,
 			server.DefaultMiddleware(logger),
 		), FuncCloser{
-			NoopCloser(mC),
 			tC,
 			eC,
 		}, nil
@@ -110,38 +110,6 @@ func MustGetErrorNotifier(l log.Logger) (errornotifier.Notifier, io.Closer) {
 	return _errorNotifier, _errorNotifierCloser
 }
 
-var _monitor monitoring.Monitor
-
-var _closer = func() {}
-
-func MustGetMonitor(l log.Logger) (monitoring.Monitor, func()) {
-	if _monitor != nil {
-		return _monitor, _closer
-	}
-
-	c := MustGetInfluxDBConfig()
-	if c.URL == "" {
-		_monitor = monitoring.NewLogMonitor(l)
-		l.Warn().Log(
-			"msg", "error creating influxdb monitor",
-			"err", "blank influxdb url",
-		)
-		return _monitor, _closer
-	}
-	if m, closer, err := monitoring.NewInfluxdbMonitor(monitoring.InfluxMonitorConfig(c.URL), l); err != nil {
-		l.Warn().Log(
-			"msg", "error creating influxdb monitor",
-			"err", err,
-		)
-		_monitor = monitoring.NewLogMonitor(l)
-	} else {
-		_monitor = m
-		_closer = closer
-	}
-
-	return _monitor, _closer
-}
-
 // AppConfig defines the app's required configuration
 type AppConfig struct {
 	NewRelicAPIKey  string
@@ -178,27 +146,6 @@ func MustGetAirbrakeConfig() errornotifier.AirbrakeConfig {
 	}
 
 	return *_airbrakeConfig
-}
-
-type InfluxDBConfig struct {
-	URL string
-}
-
-var _influxDBConfig *InfluxDBConfig
-
-func MustGetInfluxDBConfig() InfluxDBConfig {
-	if _influxDBConfig != nil {
-		return *_influxDBConfig
-	}
-
-	config := InfluxDBConfig{}
-	err := configor.New(&configor.Config{ENVPrefix: "INFLUXDB"}).Load(&config)
-	if err != nil {
-		panic(err)
-	}
-
-	_influxDBConfig = &config
-	return config
 }
 
 // NoopCloser is an adapter from `func()` to io.Closer, that calls
