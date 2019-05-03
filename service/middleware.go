@@ -28,7 +28,6 @@ func middleware(ctx context.Context) (server.Middleware, io.Closer, error) {
 		return nil, nil, errors.Wrap(err, "error configuring tracer")
 	}
 
-	errorNotifier, eC := MustGetErrorNotifier(logger)
 	appconf := MustGetAppConfig()
 
 	return server.Compose(
@@ -36,12 +35,11 @@ func middleware(ctx context.Context) (server.Middleware, io.Closer, error) {
 			corsMiddleware(logger),
 			NewRelicMiddleWare(logger, appconf.NewRelicAppName, appconf.NewRelicAPIKey),
 			monitoring.WithMonitor(monitoring.ForceContext(ctx)),
-			errornotifier.Recover(errorNotifier),
+			errornotifier.Recover(errornotifier.ForceContext(ctx)),
 			tracer,
 			server.DefaultMiddleware(logger),
 		), FuncCloser{
 			tC,
-			eC,
 		}, nil
 }
 
@@ -73,43 +71,6 @@ func NewRelicMiddleWare(log log.Logger, NewRelicAppName string, NewRelicAPIKey s
 	}
 }
 
-var (
-	_errorNotifier       errornotifier.Notifier
-	_errorNotifierCloser io.Closer
-)
-
-func MustGetErrorNotifier(l log.Logger) (errornotifier.Notifier, io.Closer) {
-	if _errorNotifier != nil {
-		return _errorNotifier, _errorNotifierCloser
-	}
-
-	airbrakeConfig := MustGetAirbrakeConfig()
-	n, closer, err := errornotifier.NewAirbrakeNotifier(airbrakeConfig)
-	if err != nil {
-		l.Warn().Log(
-			"msg", "error creating airbrake notifier",
-			"err", err,
-		)
-
-		_errorNotifier = errornotifier.NewLogNotifier(l)
-		_errorNotifierCloser = NoopCloser(func() {
-			_ = l.Info().Log(
-				"msg", "error notifier is closed",
-			)
-		})
-	} else {
-		l.Info().Log(
-			"msg", "creating airbrake notifier sucessful",
-			"project_id", airbrakeConfig.ProjectID,
-			"env", airbrakeConfig.Environment,
-		)
-		_errorNotifier = n
-		_errorNotifierCloser = closer
-	}
-
-	return _errorNotifier, _errorNotifierCloser
-}
-
 // AppConfig defines the app's required configuration
 type AppConfig struct {
 	NewRelicAPIKey  string
@@ -130,22 +91,6 @@ func MustGetAppConfig() *AppConfig {
 	}
 
 	return _appConfig
-}
-
-var _airbrakeConfig *errornotifier.AirbrakeConfig
-
-func MustGetAirbrakeConfig() errornotifier.AirbrakeConfig {
-	if _airbrakeConfig != nil {
-		return *_airbrakeConfig
-	}
-
-	_airbrakeConfig = &errornotifier.AirbrakeConfig{}
-	err := configor.New(&configor.Config{ENVPrefix: "AIRBRAKE"}).Load(_airbrakeConfig)
-	if err != nil {
-		panic(err)
-	}
-
-	return *_airbrakeConfig
 }
 
 // NoopCloser is an adapter from `func()` to io.Closer, that calls

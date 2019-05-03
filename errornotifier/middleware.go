@@ -20,7 +20,7 @@ const ctxKey key = iota
 func Recover(n Notifier) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			c := context.WithValue(req.Context(), ctxKey, n)
+			c := Context(req.Context(), n)
 			err := NotifyOnPanic(n, req, func() {
 				h.ServeHTTP(w, req.WithContext(c))
 			})
@@ -42,6 +42,11 @@ func ForceContext(c context.Context) Notifier {
 	}
 
 	return NewLogNotifier(log.ForceContext(c))
+}
+
+// Context installs a given Error Notifier in the returned context
+func Context(c context.Context, n Notifier) context.Context {
+	return context.WithValue(c, ctxKey, n)
 }
 
 // NotifyOnPanic will notify Airbrake if function f panics, and will

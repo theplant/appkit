@@ -8,6 +8,7 @@ import (
 
 	"github.com/jinzhu/configor"
 	"github.com/pkg/errors"
+	"github.com/theplant/appkit/errornotifier"
 	"github.com/theplant/appkit/log"
 	"github.com/theplant/appkit/monitoring"
 )
@@ -19,7 +20,9 @@ func serviceContext() (context.Context, io.Closer) {
 
 	_, mC, ctx := installMonitor(ctx, logger)
 
-	return ctx, FuncCloser{mC}
+	_, nC, ctx := installErrorNotifier(ctx, logger)
+
+	return ctx, FuncCloser{mC, nC}
 }
 
 func installLogger(ctx context.Context) (log.Logger, context.Context) {
@@ -39,6 +42,9 @@ func installLogger(ctx context.Context) (log.Logger, context.Context) {
 }
 
 var noopCloser = NoopCloser(func() {})
+
+////////////////////////////////////////////////////////////
+// Metric Monitor
 
 type InfluxDBConfig struct {
 	URL string
@@ -73,4 +79,33 @@ err:
 		"err", err,
 	)
 	return monitoring.NewLogMonitor(l), noopCloser, ctx
+}
+
+////////////////////////////////////////////////////////////
+// Error Notifier
+
+func installErrorNotifier(ctx context.Context, l log.Logger) (errornotifier.Notifier, io.Closer, context.Context) {
+	airbrakeConfig := errornotifier.AirbrakeConfig{}
+	err := configor.New(&configor.Config{ENVPrefix: "AIRBRAKE"}).Load(&airbrakeConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	n, closer, err := errornotifier.NewAirbrakeNotifier(airbrakeConfig)
+	if err != nil {
+		l.Warn().Log(
+			"msg", errors.Wrap(err, "error creating airbrake notifier"),
+			"err", err,
+		)
+
+		return errornotifier.NewLogNotifier(l), noopCloser, ctx
+	}
+
+	l.Info().Log(
+		"msg", "creating airbrake notifier",
+		"project_id", airbrakeConfig.ProjectID,
+		"env", airbrakeConfig.Environment,
+	)
+
+	return n, closer, errornotifier.Context(ctx, n)
 }
