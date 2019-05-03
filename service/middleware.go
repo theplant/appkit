@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/goji/httpauth"
@@ -34,12 +36,10 @@ func middleware(ctx context.Context) (server.Middleware, io.Closer, error) {
 		tracer = server.IdMiddleware
 	}
 
-	appconf := MustGetAppConfig()
-
 	return server.Compose(
 		httpAuthMiddleware(logger),
 		corsMiddleware(logger),
-		NewRelicMiddleWare(logger, appconf.NewRelicAppName, appconf.NewRelicAPIKey),
+		NewRelicMiddleWare(logger),
 		monitoring.WithMonitor(monitoring.ForceContext(ctx)),
 		errornotifier.Recover(errornotifier.ForceContext(ctx)),
 		tracer,
@@ -47,24 +47,44 @@ func middleware(ctx context.Context) (server.Middleware, io.Closer, error) {
 	), tC, nil
 }
 
-func NewRelicMiddleWare(log log.Logger, NewRelicAppName string, NewRelicAPIKey string) func(http.Handler) http.Handler {
-	config := newrelic.NewConfig(NewRelicAppName, NewRelicAPIKey)
+////////////////////////////////////////////////////////////
+// NEW RELIC
+
+type NewRelicConfig struct {
+	NewRelicAPIKey  string
+	NewRelicAppName string
+}
+
+func NewRelicMiddleWare(log log.Logger) func(http.Handler) http.Handler {
+	cfg := NewRelicConfig{}
+	err := configor.New(nil).Load(&cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	if cfg.NewRelicAppName == "" {
+		cfg.NewRelicAppName = os.Getenv("SERVICE_NAME")
+	}
+
+	config := newrelic.NewConfig(cfg.NewRelicAppName, cfg.NewRelicAPIKey)
 	app, err := newrelic.NewApplication(config)
 	if err != nil {
 		log.Warn().Log(
-			"msg", "error creating new relic agent",
+			"msg", errors.Wrap(err, "not enabling new relic middleware: error creating new relic agent"),
 			"err", err,
 		)
-		return func(handler http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				handler.ServeHTTP(w, r)
-			})
-		}
+
+		return server.IdMiddleware
 	}
 
 	if app == nil {
-		panic("Both of app and err are nil when new Application!")
+		panic("both of app and err are nil when calling newrelic.NewApplication")
 	}
+
+	log.Info().Log(
+		"msg", fmt.Sprintf("enabling new relic middleware, reporting as %s", cfg.NewRelicAppName),
+		"app_name", cfg.NewRelicAppName,
+	)
 
 	return func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -75,27 +95,7 @@ func NewRelicMiddleWare(log log.Logger, NewRelicAppName string, NewRelicAPIKey s
 	}
 }
 
-// AppConfig defines the app's required configuration
-type AppConfig struct {
-	NewRelicAPIKey  string
-	NewRelicAppName string
-}
-
-var _appConfig *AppConfig
-
-func MustGetAppConfig() *AppConfig {
-	if _appConfig != nil {
-		return _appConfig
-	}
-
-	_appConfig = &AppConfig{}
-	err := configor.New(nil).Load(_appConfig)
-	if err != nil {
-		panic(err)
-	}
-
-	return _appConfig
-}
+////////////////////////////////////////////////////////////
 
 // NoopCloser is an adapter from `func()` to io.Closer, that calls
 // given function and returns nil
