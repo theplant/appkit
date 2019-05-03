@@ -24,23 +24,27 @@ func middleware(ctx context.Context) (server.Middleware, io.Closer, error) {
 
 	tC, tracer, err := tracing.Tracer(logger)
 	if err != nil {
-		// FIXME returning nil io.Closer
-		return nil, nil, errors.Wrap(err, "error configuring tracer")
+		logger.Warn().Log(
+			"msg", errors.Wrap(err, "error configuring tracer"),
+			"err", err,
+		)
+
+		// tracing returns a null closer if there's an error
+		tC = noopCloser
+		tracer = server.IdMiddleware
 	}
 
 	appconf := MustGetAppConfig()
 
 	return server.Compose(
-			httpAuthMiddleware(logger),
-			corsMiddleware(logger),
-			NewRelicMiddleWare(logger, appconf.NewRelicAppName, appconf.NewRelicAPIKey),
-			monitoring.WithMonitor(monitoring.ForceContext(ctx)),
-			errornotifier.Recover(errornotifier.ForceContext(ctx)),
-			tracer,
-			server.DefaultMiddleware(logger),
-		), FuncCloser{
-			tC,
-		}, nil
+		httpAuthMiddleware(logger),
+		corsMiddleware(logger),
+		NewRelicMiddleWare(logger, appconf.NewRelicAppName, appconf.NewRelicAPIKey),
+		monitoring.WithMonitor(monitoring.ForceContext(ctx)),
+		errornotifier.Recover(errornotifier.ForceContext(ctx)),
+		tracer,
+		server.DefaultMiddleware(logger),
+	), tC, nil
 }
 
 func NewRelicMiddleWare(log log.Logger, NewRelicAppName string, NewRelicAPIKey string) func(http.Handler) http.Handler {
