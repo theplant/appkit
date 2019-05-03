@@ -143,7 +143,7 @@ func corsMiddleware(logger log.Logger) server.Middleware {
 
 	if config.RawAllowedOrigins == "" {
 		logger.Warn().Log(
-			"msg", "not enabling CORS middleware, CORS configuration is blank",
+			"msg", "not enabling CORS middleware: CORS configuration is blank",
 			"raw_allowed_origins", config.RawAllowedOrigins,
 			"allowed_credentials", config.AllowCredentials,
 		)
@@ -186,8 +186,8 @@ func httpAuthMiddleware(logger log.Logger) server.Middleware {
 	}
 
 	if config.Username == "" {
-		logger.Warn().Log(
-			"msg", "not enabling HTTP basic auth middleware, username is blank",
+		logger.Info().Log(
+			"msg", "not enabling HTTP basic auth middleware: username is blank",
 		)
 		return server.IdMiddleware
 	}

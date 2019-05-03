@@ -75,7 +75,7 @@ func installMonitor(ctx context.Context, l log.Logger) (monitoring.Monitor, io.C
 
 err:
 	l.Warn().Log(
-		"msg", errors.Wrap(err, "error creating influxdb monitor"),
+		"msg", errors.Wrap(err, "falling back to log monitor: error creating influxdb monitor"),
 		"err", err,
 	)
 	return monitoring.NewLogMonitor(l), noopCloser, ctx
@@ -94,7 +94,7 @@ func installErrorNotifier(ctx context.Context, l log.Logger) (errornotifier.Noti
 	n, closer, err := errornotifier.NewAirbrakeNotifier(airbrakeConfig)
 	if err != nil {
 		l.Warn().Log(
-			"msg", errors.Wrap(err, "error creating airbrake notifier"),
+			"msg", errors.Wrap(err, "falling back to log error notifier: error creating airbrake notifier"),
 			"err", err,
 		)
 
