@@ -6,8 +6,12 @@ import (
 	"io"
 	"os"
 
+	"github.com/hashicorp/vault/api"
 	"github.com/jinzhu/configor"
 	"github.com/pkg/errors"
+	"github.com/theplant/appkit/credentials"
+	"github.com/theplant/appkit/credentials/aws"
+	"github.com/theplant/appkit/credentials/vault"
 	"github.com/theplant/appkit/errornotifier"
 	"github.com/theplant/appkit/log"
 	"github.com/theplant/appkit/monitoring"
@@ -16,19 +20,26 @@ import (
 func serviceContext() (context.Context, io.Closer) {
 	ctx := context.Background()
 
-	logger, ctx := installLogger(ctx)
+	serviceName := os.Getenv("SERVICE_NAME")
+
+	logger, ctx := installLogger(ctx, serviceName)
 
 	_, mC, ctx := installMonitor(ctx, logger)
 
 	_, nC, ctx := installErrorNotifier(ctx, logger)
 
+	cfg := credentialsConfig(serviceName)
+
+	vault, ctx := installVault(ctx, logger, cfg.Authn)
+
+	ctx = installAWSSession(ctx, logger, cfg.AWSPath, vault)
+
 	return ctx, FuncCloser{mC, nC}
 }
 
-func installLogger(ctx context.Context) (log.Logger, context.Context) {
+func installLogger(ctx context.Context, serviceName string) (log.Logger, context.Context) {
 	logger := log.Default()
 
-	serviceName := os.Getenv("SERVICE_NAME")
 	if serviceName == "" {
 		logger.Warn().Log("msg", "creating service context, SERVICE_NAME not set")
 	} else {
@@ -108,4 +119,48 @@ func installErrorNotifier(ctx context.Context, l log.Logger) (errornotifier.Noti
 	)
 
 	return n, closer, errornotifier.Context(ctx, n)
+}
+
+////////////////////////////////////////////////////////////
+// Credentials: Vault, AWS
+
+type key int
+
+const (
+	vaultKey key = iota
+	awsKey
+)
+
+func credentialsConfig(serviceName string) credentials.Config {
+	config := credentials.Config{}
+
+	err := configor.New(&configor.Config{ENVPrefix: "VAULT"}).Load(&config)
+	if err != nil {
+		panic(err)
+	}
+
+	if serviceName := os.Getenv("SERVICE_NAME"); serviceName != "" {
+		config = credentials.WithServiceName(config, serviceName)
+	}
+
+	return config
+}
+
+func installVault(ctx context.Context, l log.Logger, config vault.Config) (*api.Client, context.Context) {
+	vault, err := vault.NewVaultClient(l, config)
+	if err != nil {
+		panic(err)
+	}
+
+	return vault, context.WithValue(ctx, vaultKey, vault)
+}
+
+func installAWSSession(ctx context.Context, l log.Logger, awsPath string, vault *api.Client) context.Context {
+
+	awsSession, err := aws.NewSession(l, vault, awsPath)
+	if err != nil {
+		panic(err)
+	}
+
+	return aws.Context(ctx, awsSession)
 }
