@@ -41,10 +41,18 @@ func ListenAndServe(app func(context.Context, *http.ServeMux) error) {
 		return
 	}
 
+	cfg := server.Config{}
+	cfg.Addr = os.Getenv("ADDR")
+	if cfg.Addr == "" {
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "9800"
+		}
+		cfg.Addr = ":" + port
+	}
+
 	hc := server.GoListenAndServe(
-		server.Config{
-			Addr: ":9800",
-		},
+		cfg,
 		logger,
 		m(mux),
 	)

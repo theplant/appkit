@@ -103,7 +103,9 @@ Vault path of the credentials secret. By default this is set to
 
 ## HTTP Server
 
-Server port/interface is configurable via [TBD oops, not configurable!]
+`PORT`: port number for HTTP server to bind to, defaults to `9800`. If
+required, `ADDR` can be set instead to allow binding to a specific
+interface/IP address using `[interface]:port` syntax.
 
 ## Monitor
 
