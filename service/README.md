@@ -66,6 +66,10 @@ Environment variables:
 
 * `BASICAUTH_USERNAME`
 * `BASICAUTH_PASSWORD`
+* `BASICAUTH_USERAGENTWHITELISTREGEXP`: Regexp matched against HTTP
+  User-Agent header to bypass HTTP Basic Authentication.
+* `BASICAUTH_PATHWHITELISTREGEXP`: Regexp matched against request path
+  to bypass HTTP Basic Authentication.
 
 ## CORS
 

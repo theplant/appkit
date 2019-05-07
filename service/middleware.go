@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -176,8 +177,10 @@ func corsMiddleware(logger log.Logger) server.Middleware {
 // HTTP Basic Auth
 
 type httpAuthConfig struct {
-	Username string
-	Password string
+	Username                 string
+	Password                 string
+	UserAgentWhitelistRegexp string
+	PathWhitelistRegexp      string
 }
 
 func httpAuthMiddleware(logger log.Logger) server.Middleware {
@@ -195,11 +198,52 @@ func httpAuthMiddleware(logger log.Logger) server.Middleware {
 		return server.IdMiddleware
 	}
 
+	httpAuthMiddleware := httpauth.SimpleBasicAuth(config.Username, config.Password)
+
+	if config.UserAgentWhitelistRegexp == "" && config.PathWhitelistRegexp == "" {
+		logger.Info().Log(
+			"msg", "enabling HTTP basic auth middleware",
+			"username", config.Username,
+		)
+		return httpAuthMiddleware
+	}
+
+	var userAgentRegexp, pathRegexp *regexp.Regexp
+
+	if config.UserAgentWhitelistRegexp != "" {
+		userAgentRegexp, err = regexp.Compile(config.UserAgentWhitelistRegexp)
+		if err != nil {
+			panic(errors.Wrap(err, fmt.Sprintf("error compiling http basic auth user-agent whitelist regexp %q", config.UserAgentWhitelistRegexp)))
+		}
+	}
+
+	if config.PathWhitelistRegexp != "" {
+		pathRegexp, err = regexp.Compile(config.PathWhitelistRegexp)
+		if err != nil {
+			panic(errors.Wrap(err, fmt.Sprintf("error compiling http basic auth path whitelist regexp %q", config.PathWhitelistRegexp)))
+		}
+	}
+
 	logger.Info().Log(
-		"msg", "enabling HTTP basic auth middleware",
+		"msg", "enabling HTTP basic auth middleware with whitelists",
 		"username", config.Username,
+		"user_agent_whitelist", config.UserAgentWhitelistRegexp,
+		"path_whitelist", config.PathWhitelistRegexp,
 	)
-	return httpauth.SimpleBasicAuth(config.Username, config.Password)
+
+	return func(h http.Handler) http.Handler {
+		authedHandler := httpAuthMiddleware(h)
+
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if (userAgentRegexp != nil && userAgentRegexp.MatchString(r.Header.Get("User-Agent"))) ||
+				(pathRegexp != nil && pathRegexp.MatchString(r.URL.Path)) {
+				h.ServeHTTP(w, r)
+				return
+			}
+
+			authedHandler.ServeHTTP(w, r)
+		})
+	}
 }
 
 ////////////////////////////////////////////////////////////
