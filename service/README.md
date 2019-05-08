@@ -128,8 +128,8 @@ logging notifier will be used instead.
 
 ## New Relic
 
-* `NEWRELICAPIKEY`
-* `NEWRELICAPPNAME`: If this is blank, `$SERVICE_NAME` will be used.
+* `NEWRELIC_APIKey`
+* `NEWRELIC_AppName`: If this is blank, `$SERVICE_NAME` will be used.
 
 ## Tracer
 

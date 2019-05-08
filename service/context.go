@@ -34,7 +34,7 @@ func serviceContext() (context.Context, io.Closer) {
 
 	ctx = installAWSSession(ctx, logger, cfg.AWSPath, vault)
 
-	return ctx, FuncCloser{mC, nC}
+	return ctx, funcCloser{mC, nC}
 }
 
 func installLogger(ctx context.Context, serviceName string) (log.Logger, context.Context) {
@@ -52,12 +52,12 @@ func installLogger(ctx context.Context, serviceName string) (log.Logger, context
 	return logger, log.Context(ctx, logger)
 }
 
-var noopCloser = NoopCloser(func() {})
+var noopCloser = noopCloserF(func() {})
 
 ////////////////////////////////////////////////////////////
 // Metric Monitor
 
-type InfluxDBConfig struct {
+type influxDBConfig struct {
 	URL string
 }
 
@@ -65,7 +65,7 @@ func installMonitor(ctx context.Context, l log.Logger) (monitoring.Monitor, io.C
 	var monitor monitoring.Monitor
 	var closer func()
 
-	config := InfluxDBConfig{}
+	config := influxDBConfig{}
 	err := configor.New(&configor.Config{ENVPrefix: "INFLUXDB"}).Load(&config)
 	if err != nil {
 		goto err
@@ -82,7 +82,7 @@ func installMonitor(ctx context.Context, l log.Logger) (monitoring.Monitor, io.C
 		goto err
 	}
 
-	return monitor, NoopCloser(closer), monitoring.Context(ctx, monitor)
+	return monitor, noopCloserF(closer), monitoring.Context(ctx, monitor)
 
 err:
 	l.Warn().Log(
@@ -128,7 +128,6 @@ type key int
 
 const (
 	vaultKey key = iota
-	awsKey
 )
 
 func credentialsConfig(serviceName string) credentials.Config {

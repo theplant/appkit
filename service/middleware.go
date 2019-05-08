@@ -43,7 +43,7 @@ func middleware(ctx context.Context) (server.Middleware, io.Closer, error) {
 		withAWSSession(aws.ForceContext(ctx)),
 		httpAuthMiddleware(logger),
 		corsMiddleware(logger),
-		NewRelicMiddleWare(logger),
+		newRelicMiddleware(logger),
 		monitoring.WithMonitor(monitoring.ForceContext(ctx)),
 		errornotifier.Recover(errornotifier.ForceContext(ctx)),
 		tracer,
@@ -54,23 +54,23 @@ func middleware(ctx context.Context) (server.Middleware, io.Closer, error) {
 ////////////////////////////////////////////////////////////
 // NEW RELIC
 
-type NewRelicConfig struct {
-	NewRelicAPIKey  string
-	NewRelicAppName string
+type newRelicConfig struct {
+	APIKey  string
+	AppName string
 }
 
-func NewRelicMiddleWare(log log.Logger) func(http.Handler) http.Handler {
-	cfg := NewRelicConfig{}
-	err := configor.New(nil).Load(&cfg)
+func newRelicMiddleware(log log.Logger) func(http.Handler) http.Handler {
+	cfg := newRelicConfig{}
+	err := configor.New(&configor.Config{ENVPrefix: "NEWRELIC"}).Load(&cfg)
 	if err != nil {
 		panic(err)
 	}
 
-	if cfg.NewRelicAppName == "" {
-		cfg.NewRelicAppName = os.Getenv("SERVICE_NAME")
+	if cfg.AppName == "" {
+		cfg.AppName = os.Getenv("SERVICE_NAME")
 	}
 
-	config := newrelic.NewConfig(cfg.NewRelicAppName, cfg.NewRelicAPIKey)
+	config := newrelic.NewConfig(cfg.AppName, cfg.APIKey)
 	app, err := newrelic.NewApplication(config)
 	if err != nil {
 		log.Warn().Log(
@@ -86,8 +86,8 @@ func NewRelicMiddleWare(log log.Logger) func(http.Handler) http.Handler {
 	}
 
 	log.Info().Log(
-		"msg", fmt.Sprintf("enabling new relic middleware, reporting as %s", cfg.NewRelicAppName),
-		"app_name", cfg.NewRelicAppName,
+		"msg", fmt.Sprintf("enabling new relic middleware, reporting as %s", cfg.AppName),
+		"app_name", cfg.AppName,
 	)
 
 	return func(handler http.Handler) http.Handler {
@@ -103,10 +103,10 @@ func NewRelicMiddleWare(log log.Logger) func(http.Handler) http.Handler {
 
 // NoopCloser is an adapter from `func()` to io.Closer, that calls
 // given function and returns nil
-type NoopCloser func()
+type noopCloserF func()
 
 // Close is part of io.Closer
-func (f NoopCloser) Close() error {
+func (f noopCloserF) Close() error {
 	f()
 	return nil
 }
@@ -114,10 +114,10 @@ func (f NoopCloser) Close() error {
 // FuncCloser aggregates io.Closers into a single io.Closer that
 // collects errors from each io.Closer function in the array when
 // closed.
-type FuncCloser []io.Closer
+type funcCloser []io.Closer
 
 // Close is part of io.Closer
-func (f FuncCloser) Close() error {
+func (f funcCloser) Close() error {
 	var err error
 	for _, c := range f {
 		if e := c.Close(); e != nil {
