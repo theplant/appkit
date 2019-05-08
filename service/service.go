@@ -60,7 +60,7 @@ func ListenAndServe(app func(context.Context, *http.ServeMux) error) {
 	// routes
 	defer logErr(logger, hc.Close)
 
-	ch := make(chan os.Signal)
+	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 
 	sig := <-ch
