@@ -138,3 +138,9 @@ back-end.
 
 Package to provide single interface for acquiring AWS (-only, for now)
 credentials for apps running on different platforms.
+
+# [Service](service/README.md)
+
+Package to provide a common harness for running HTTP apps, that
+configures middleware that we use nearly all the time, and provides a
+standard way to configure the different parts of the service.

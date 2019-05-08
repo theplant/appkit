@@ -64,11 +64,11 @@ In request-processing order:
 
 Environment variables:
 
-* `BASICAUTH_USERNAME`
-* `BASICAUTH_PASSWORD`
-* `BASICAUTH_USERAGENTWHITELISTREGEXP`: Regexp matched against HTTP
+* `BASICAUTH_Username`
+* `BASICAUTH_Password`
+* `BASICAUTH_UserAgentWhitelistRegexp`: Regexp matched against HTTP
   User-Agent header to bypass HTTP Basic Authentication.
-* `BASICAUTH_PATHWHITELISTREGEXP`: Regexp matched against request path
+* `BASICAUTH_PathWhitelistRegexp`: Regexp matched against request path
   to bypass HTTP Basic Authentication.
 
 ## CORS

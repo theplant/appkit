@@ -1,3 +1,7 @@
+# PR [#37](https://github.com/theplant/appkit/pull/37)
+
+* Add package appkit/service
+
 # PR [#19](https://github.com/theplant/appkit/pull/19)
 
 * Add Package appkit/credentials
