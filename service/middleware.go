@@ -140,7 +140,7 @@ type corsConfig struct {
 func corsMiddleware(logger log.Logger) server.Middleware {
 	config := corsConfig{}
 
-	err := configor.New(&configor.Config{ENVPrefix: "API"}).Load(&config)
+	err := configor.New(&configor.Config{ENVPrefix: "CORS"}).Load(&config)
 	if err != nil {
 		panic(err)
 	}

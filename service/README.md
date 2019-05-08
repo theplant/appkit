@@ -78,11 +78,11 @@ configuration of https://github.com/rs/cors
 
 Environment variables:
 
-* `API_RawAllowedOrigins`: comma-separated list of allowed values for
+* `CORS_RawAllowedOrigins`: comma-separated list of allowed values for
   [`Access-Control-Allow-Origin`](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#Access-Control-Allow-Origin)
   HTTP header.
 
-* `API_AllowCredentials`: boolean-ish value for
+* `CORS_AllowCredentials`: boolean-ish value for
   [`Access-Control-Allow-Credentials`](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#Access-Control-Allow-Credentials)
   HTTP header.
 
