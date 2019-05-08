@@ -121,7 +121,7 @@ InfluxDB.
 
 * `AIRBRAKE_PROJECTID`
 * `AIRBRAKE_TOKEN`
-* `AIRBRAKE_ENV`
+* `AIRBRAKE_ENVIRONMENT`
 
 If notifier can't be created due to blank project ID or token, a
 logging notifier will be used instead.
