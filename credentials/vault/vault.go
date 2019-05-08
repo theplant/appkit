@@ -36,11 +36,6 @@ func NewVaultClient(logger log.Logger, config Config) (*api.Client, error) {
 		"role", config.Role,
 	)
 
-	logger.Debug().Log(
-		"msg", "creating vault client",
-		"token_filename", config.TokenFilename,
-	)
-
 	cfg := api.Config{
 		Address: config.Address,
 	}
@@ -50,11 +45,20 @@ func NewVaultClient(logger log.Logger, config Config) (*api.Client, error) {
 		tokBytes, err := ioutil.ReadFile(config.TokenFilename)
 
 		if os.IsNotExist(err) {
-			logger.Info().Log("msg", "no token and no token file, returning nil client")
+			logger.Info().Log("msg", "not creating vault client: no token and no token file")
 			return nil, nil
 		}
 
 		token = string(tokBytes)
+
+		logger.Info().Log(
+			"msg", fmt.Sprintf("creating vault client with token from %s", config.TokenFilename),
+			"token_filename", config.TokenFilename,
+		)
+	} else {
+		logger.Info().Log(
+			"msg", "creating vault client with token from environment",
+		)
 	}
 
 	client, err := api.NewClient(&cfg)

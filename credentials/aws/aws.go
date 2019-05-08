@@ -88,7 +88,7 @@ func NewSession(logger log.Logger, vault *api.Client, path string) (*session.Ses
 
 	if vault != nil {
 		logger.Info().Log(
-			"msg", "initialising aws session with vault",
+			"msg", "using vault-backed aws session",
 		)
 
 		config := aws.NewConfig().WithCredentials(

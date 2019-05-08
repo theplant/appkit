@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
+	"github.com/pkg/errors"
 	"github.com/theplant/appkit/contexts"
 	ctxtrace "github.com/theplant/appkit/contexts/trace"
 	"github.com/theplant/appkit/log"
@@ -151,18 +153,28 @@ func Tracer(logger log.Logger) (io.Closer, server.Middleware, error) {
 	)
 
 	cfg, err := jaegercfg.FromEnv()
+
+	envServiceName := os.Getenv("SERVICE_NAME")
+	if cfg.ServiceName == "" {
+		cfg.ServiceName = envServiceName
+	}
+
 	if err != nil {
-		logger.Info().Log(
-			"msg", fmt.Sprintf("didn't configure tracer: %v", err),
+		logger.Warn().Log(
+			"msg", errors.Wrap(err, "didn't configure tracer"),
 			"err", err,
 		)
 		return nullCloser{}, server.IdMiddleware, nil
 	} else if cfg.ServiceName == "" {
-		logger.Info().Log(
-			"msg", fmt.Sprintf("didn't configure tracer: no service name set"),
+		logger.Warn().Log(
+			"msg", "didn't configure tracer: no service name set",
 		)
 		return nullCloser{}, server.IdMiddleware, nil
 	}
+	logger.Info().Log(
+		"msg", fmt.Sprintf("tracing service as %s", cfg.ServiceName),
+	)
+
 	closer, err := cfg.InitGlobalTracer("") // Name will come from environment
 	return closer, trace, err
 }
