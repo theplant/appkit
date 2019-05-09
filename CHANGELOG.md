@@ -1,3 +1,8 @@
+# PR [#38](https://github.com/theplant/appkit/pull/38)
+
+* Add support for `VAULT_AUTHN_DISABLED` to stop appkit/service
+  automatically attempting to authenticate with Vault.
+
 # PR [#37](https://github.com/theplant/appkit/pull/37)
 
 * Add package appkit/service
