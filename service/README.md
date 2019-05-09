@@ -105,6 +105,10 @@ default this is set to `$SERVICE_NAME`.
 Vault path of the credentials secret. By default this is set to
 `aws/sts/<$SERVICE_NAME>`.
 
+* `VAULT_AUTHN_DISABLED`: flag to enable/disable Vault authentication
+  completely. Use this when the service does not need any access to
+  Vault.
+
 ## HTTP Server
 
 `PORT`: port number for HTTP server to bind to, defaults to `9800`. If

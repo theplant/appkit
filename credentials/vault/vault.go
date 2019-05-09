@@ -26,6 +26,8 @@ type Config struct {
 
 	Token         string
 	TokenFilename string `default:"/var/run/secrets/kubernetes.io/serviceaccount/token"`
+
+	Disabled bool
 }
 
 func NewVaultClient(logger log.Logger, config Config) (*api.Client, error) {
@@ -35,6 +37,11 @@ func NewVaultClient(logger log.Logger, config Config) (*api.Client, error) {
 		"auth_path", config.AuthPath,
 		"role", config.Role,
 	)
+
+	if config.Disabled {
+		logger.Info().Log("msg", "not creating vault client: vault disabled by configuration")
+		return nil, nil
+	}
 
 	cfg := api.Config{
 		Address: config.Address,
