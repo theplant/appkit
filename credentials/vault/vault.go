@@ -131,6 +131,7 @@ func autorenewAuthentication(client *api.Client, token string, config Config, lo
 
 			go renewer.Renew()
 
+		RenewalLoop:
 			for {
 				select {
 				case err := <-renewer.DoneCh():
@@ -141,7 +142,7 @@ func autorenewAuthentication(client *api.Client, token string, config Config, lo
 							"msg", "halting vault authentication autorenewal",
 						)
 					}
-					break
+					break RenewalLoop
 
 				case renewal := <-renewer.RenewCh():
 					l.Info().Log(
