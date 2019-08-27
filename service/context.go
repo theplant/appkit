@@ -37,14 +37,16 @@ func serviceContext() (context.Context, io.Closer) {
 
 	return ctx, funcCloser{noopCloserF(func() {
 		logger.Debug().Log(
-			"msg", fmt.Sprintf("shutting down service context for %q", serviceName),
+			"msg", fmt.Sprintf("shutting down service context for %v", serviceName),
 		)
 
-		logger.Debug().Log(
-			"msg", "revoking vault token",
-		)
+		if vault != nil {
+			logger.Debug().Log(
+				"msg", "revoking vault token",
+			)
 
-		vault.Auth().Token().RevokeSelf("")
+			vault.Auth().Token().RevokeSelf("")
+		}
 	}), mC, nC}
 }
 
@@ -192,12 +194,6 @@ func installErrorNotifier(ctx context.Context, l log.Logger) (errornotifier.Noti
 ////////////////////////////////////////////////////////////
 // Credentials: Vault, AWS
 
-type key int
-
-const (
-	vaultKey key = iota
-)
-
 func credentialsConfig(serviceName string) credentials.Config {
 	config := credentials.Config{}
 
@@ -214,16 +210,12 @@ func credentialsConfig(serviceName string) credentials.Config {
 }
 
 func installVault(ctx context.Context, l log.Logger, config vault.Config) (*api.Client, context.Context) {
-	vault, err := vault.NewVaultClient(l, config)
+	v, err := vault.NewVaultClient(l, config)
 	if err != nil {
 		panic(err)
 	}
 
-	return vault, context.WithValue(ctx, vaultKey, vault)
-}
-
-func Vault(ctx context.Context) *api.Client {
-	return ctx.Value(vaultKey).(*api.Client)
+	return v, vault.Context(ctx, v)
 }
 
 func installAWSSession(ctx context.Context, l log.Logger, awsPath string, vault *api.Client) context.Context {
