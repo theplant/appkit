@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	neturl "net/url"
 	"os"
 
 	"github.com/hashicorp/vault/api"
@@ -74,10 +75,15 @@ type influxDBConfig struct {
 	URL string
 }
 
-func installMonitor(ctx context.Context, l log.Logger, serviceName string, vault *api.Client) (monitoring.Monitor, io.Closer, context.Context) {
-	var monitor monitoring.Monitor
-	var closer func()
-	var c monitoring.InfluxMonitorConfig
+func installMonitor(ctx context.Context, l log.Logger, serviceName string, vault *vault.Client) (monitoring.Monitor, io.Closer, context.Context) {
+	var (
+		monitor monitoring.Monitor
+		closer  func()
+		url     *neturl.URL
+		q       neturl.Values
+	)
+
+	closer = noopCloser
 
 	config := influxDBConfig{}
 	err := configor.New(&configor.Config{ENVPrefix: "INFLUXDB"}).Load(&config)
@@ -86,20 +92,31 @@ func installMonitor(ctx context.Context, l log.Logger, serviceName string, vault
 		goto err
 	}
 
-	if config.URL == "" {
-		err = errors.New("blank influxdb url")
+	url, err = neturl.Parse(config.URL)
+	if err != nil {
+		err = errors.Wrap(err, "error parsing influxdb config url")
 		goto err
 	}
 
-	c, err = influxdb.InfluxMonitorConfig(l, serviceName, vault, config.URL)
-	if err != nil {
-		err = errors.Wrap(err, "error constructing influxdb url")
-		goto err
+	// attach service name to url
+	q = url.Query()
+	if q.Get("service-name") == "" && serviceName != "" {
+		q.Set("service-name", serviceName)
+		url.RawQuery = q.Encode()
 	}
 
-	monitor, closer, err = monitoring.NewInfluxdbMonitor(c, l)
+	if url.Scheme == "vault" {
+		if vault != nil {
+			monitor, closer, err = influxdb.NewInfluxDBMonitor(l, vault, url)
+			err = errors.Wrap(err, "error creating influxdb+vault monitor")
+		} else {
+			err = errors.Wrap(err, "nil vault client when configured for influxdb+vault monitor")
+		}
+	} else {
+		monitor, closer, err = monitoring.NewInfluxdbMonitor(monitoring.InfluxMonitorConfig(config.URL), l)
+		err = errors.Wrap(err, "error creating influxdb monitor")
+	}
 	if err != nil {
-		closer()
 		goto err
 	}
 
@@ -107,9 +124,10 @@ func installMonitor(ctx context.Context, l log.Logger, serviceName string, vault
 
 err:
 	l.Warn().Log(
-		"msg", errors.Wrap(err, "falling back to log monitor: error creating influxdb monitor"),
+		"msg", errors.Wrap(err, "falling back to log monitor"),
 		"err", err,
 	)
+	closer()
 	return monitoring.NewLogMonitor(l), noopCloser, ctx
 }
 
@@ -160,7 +178,7 @@ func credentialsConfig(serviceName string) credentials.Config {
 	return config
 }
 
-func installVault(ctx context.Context, l log.Logger, config vault.Config) (*api.Client, context.Context) {
+func installVault(ctx context.Context, l log.Logger, config vault.Config) (*vault.Client, context.Context) {
 	v, err := vault.NewVaultClient(l, config)
 	if err != nil {
 		panic(err)
@@ -169,9 +187,14 @@ func installVault(ctx context.Context, l log.Logger, config vault.Config) (*api.
 	return v, vault.Context(ctx, v)
 }
 
-func installAWSSession(ctx context.Context, l log.Logger, awsPath string, vault *api.Client) context.Context {
+func installAWSSession(ctx context.Context, l log.Logger, awsPath string, vault *vault.Client) context.Context {
 
-	awsSession, err := aws.NewSession(l, vault, awsPath)
+	var client *api.Client
+	if vault != nil {
+		client = vault.Client
+	}
+
+	awsSession, err := aws.NewSession(l, client, awsPath)
 	if err != nil {
 		panic(err)
 	}
