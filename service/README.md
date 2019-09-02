@@ -121,6 +121,16 @@ interface/IP address using `[interface]:port` syntax.
 (via `appkit/log` monitor will be used instead of sending data to
 InfluxDB.
 
+If `INFLUXDB_URL`'s scheme is `vault` (vs `http` or `https`), then the
+client will source InfluxDB credentials from Vault. In this case,
+`INFLUXDB_URL` does not need any credentials. See the Vault+InfluxDB
+client documentation in the [`credentials`
+README](../credentials/README.md) for information about configuration
+constraints.
+
+If `INFLUXDB_URL` has no (or blank) `service-name` query parameter,
+the parameter will be set to `SERVICE_NAME`.
+
 ## Error Notifier
 
 * `AIRBRAKE_PROJECTID`

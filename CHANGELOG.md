@@ -1,3 +1,21 @@
+# PR [#39](https://github.com/theplant/appkit/pull/39)
+
+* Add monitoring InfluxDB client that sources InfluxDB credentials
+  from Vault.
+
+* Allow creation of InfluxDB-backed monitoring client with custom
+  InfluxDB transport client.
+
+* Introduce public Vault client interface (instead of using
+  `github.com/hashicorp/vault/api.Client` directly)
+
+* Make Vault client available from service context
+
+* Allow subscription to Vault (re-)authentication via
+  `appkit/credentials/vault.Client.OnAuth`
+
+* Revoke Vault auth lease when service context is closed
+
 # PR [#38](https://github.com/theplant/appkit/pull/38)
 
 * Add support for `VAULT_AUTHN_DISABLED` to stop appkit/service
