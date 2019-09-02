@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cenkalti/backoff"
@@ -30,7 +31,30 @@ type Config struct {
 	Disabled bool
 }
 
-func NewVaultClient(logger log.Logger, config Config) (*api.Client, error) {
+type Client struct {
+	*api.Client
+
+	signal signal
+}
+
+// OnAuth calls f whenever the client authenticates. It's most useful
+// for an auto-renewing client. If the client is already authenticated
+// when OnAuth is called, f will be called immediately.
+func (c *Client) OnAuth(f func() error) {
+	// If we only call Wait, we might not be signalled in this case:
+	//
+	// 1. Create autorenewing client
+	// 2. Client authenticates in separate goroutine
+	// 3. Call OnAuth
+	if c.Token() != "" {
+		if f() != nil {
+			return // Same behaviour as Wait()
+		}
+	}
+	c.signal.wait(f)
+}
+
+func NewVaultClient(logger log.Logger, config Config) (*Client, error) {
 	logger = logger.With(
 		"context", "appkit/credentials/vault",
 		"address", config.Address,
@@ -73,16 +97,17 @@ func NewVaultClient(logger log.Logger, config Config) (*api.Client, error) {
 		return nil, errors.Wrap(err, "error in vault/api.NewClient")
 	}
 
+	c := &Client{Client: client, signal: newSignal()}
 	if config.Autorenew == nil || *config.Autorenew {
-		go autorenewAuthentication(client, token, config, logger)
+		go autorenewAuthentication(c, token, config, logger)
 	} else {
-		_, err = fetchAuthToken(client, token, config, logger)
+		_, err = fetchAuthToken(c, token, config, logger)
 	}
 
-	return client, err
+	return c, err
 }
 
-func autorenewAuthentication(client *api.Client, token string, config Config, logger log.Logger) {
+func autorenewAuthentication(client *Client, token string, config Config, logger log.Logger) {
 	logger = logger.With("autorenew", true)
 	logger.Info().Log("msg", "starting automatic vault authentication renewal")
 
@@ -156,7 +181,7 @@ func autorenewAuthentication(client *api.Client, token string, config Config, lo
 	}
 }
 
-func fetchAuthToken(client *api.Client, token string, config Config, logger log.Logger) (*api.Secret, error) {
+func fetchAuthToken(client *Client, token string, config Config, logger log.Logger) (*api.Secret, error) {
 	logger.Debug().Log("msg", "authenticating with vault")
 	authReq := map[string]interface{}{
 		"jwt":  token,
@@ -188,6 +213,8 @@ func fetchAuthToken(client *api.Client, token string, config Config, logger log.
 
 	client.SetToken(s.Auth.ClientToken)
 
+	client.signal.signal()
+
 	return s, nil
 }
 
@@ -198,4 +225,42 @@ func LogWarnings(s *api.Secret, logger log.Logger) {
 			l.Log("msg", fmt.Sprintf("vault api warning: %s", w))
 		}
 	}
+}
+
+////////////////////////////////////////
+
+type signal struct {
+	*sync.Cond
+}
+
+func newSignal() signal {
+	var m sync.Mutex
+
+	return signal{sync.NewCond(&m)}
+}
+
+func (s signal) signal() {
+	s.Cond.Broadcast()
+}
+
+// Note that `f` will only be called the next time `signal` is called,
+// it won't be called if `signal` was called before `wait`.
+//
+// 1. Create signal
+// 2. Call Signal()
+// 3. Call Wait(f)
+// 4. Call Signal() => calls f
+// 5. Call Wait(g)
+// 6. Call Signal() => calls f, g
+func (s signal) wait(f func() error) {
+	go func() {
+		for {
+			s.Cond.L.Lock()
+			s.Cond.Wait()
+			s.Cond.L.Unlock()
+			if f() != nil {
+				break
+			}
+		}
+	}()
 }

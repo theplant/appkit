@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	neturl "net/url"
 	"os"
 
 	"github.com/hashicorp/vault/api"
@@ -11,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/theplant/appkit/credentials"
 	"github.com/theplant/appkit/credentials/aws"
+	"github.com/theplant/appkit/credentials/influxdb"
 	"github.com/theplant/appkit/credentials/vault"
 	"github.com/theplant/appkit/errornotifier"
 	"github.com/theplant/appkit/log"
@@ -24,17 +26,29 @@ func serviceContext() (context.Context, io.Closer) {
 
 	logger, ctx := installLogger(ctx, serviceName)
 
-	_, mC, ctx := installMonitor(ctx, logger)
-
-	_, nC, ctx := installErrorNotifier(ctx, logger)
-
 	cfg := credentialsConfig(serviceName)
 
 	vault, ctx := installVault(ctx, logger, cfg.Authn)
 
 	ctx = installAWSSession(ctx, logger, cfg.AWSPath, vault)
 
-	return ctx, funcCloser{mC, nC}
+	_, mC, ctx := installMonitor(ctx, logger, serviceName, vault)
+
+	_, nC, ctx := installErrorNotifier(ctx, logger)
+
+	return ctx, funcCloser{noopCloserF(func() {
+		logger.Debug().Log(
+			"msg", fmt.Sprintf("shutting down service context for %v", serviceName),
+		)
+
+		if vault != nil {
+			logger.Debug().Log(
+				"msg", "revoking vault token",
+			)
+
+			vault.Auth().Token().RevokeSelf("")
+		}
+	}), mC, nC}
 }
 
 func installLogger(ctx context.Context, serviceName string) (log.Logger, context.Context) {
@@ -61,24 +75,48 @@ type influxDBConfig struct {
 	URL string
 }
 
-func installMonitor(ctx context.Context, l log.Logger) (monitoring.Monitor, io.Closer, context.Context) {
-	var monitor monitoring.Monitor
-	var closer func()
+func installMonitor(ctx context.Context, l log.Logger, serviceName string, vault *vault.Client) (monitoring.Monitor, io.Closer, context.Context) {
+	var (
+		monitor monitoring.Monitor
+		closer  func()
+		url     *neturl.URL
+		q       neturl.Values
+	)
+
+	closer = noopCloser
 
 	config := influxDBConfig{}
 	err := configor.New(&configor.Config{ENVPrefix: "INFLUXDB"}).Load(&config)
 	if err != nil {
+		err = errors.Wrap(err, "error fetching influxdb config")
 		goto err
 	}
 
-	if config.URL == "" {
-		err = errors.New("blank influxdb url")
-		goto err
-	}
-
-	monitor, closer, err = monitoring.NewInfluxdbMonitor(monitoring.InfluxMonitorConfig(config.URL), l)
+	url, err = neturl.Parse(config.URL)
 	if err != nil {
-		closer()
+		err = errors.Wrap(err, "error parsing influxdb config url")
+		goto err
+	}
+
+	// attach service name to url
+	q = url.Query()
+	if q.Get("service-name") == "" && serviceName != "" {
+		q.Set("service-name", serviceName)
+		url.RawQuery = q.Encode()
+	}
+
+	if url.Scheme == "vault" {
+		if vault != nil {
+			monitor, closer, err = influxdb.NewInfluxDBMonitor(l, vault, url)
+			err = errors.Wrap(err, "error creating influxdb+vault monitor")
+		} else {
+			err = errors.Wrap(err, "nil vault client when configured for influxdb+vault monitor")
+		}
+	} else {
+		monitor, closer, err = monitoring.NewInfluxdbMonitor(monitoring.InfluxMonitorConfig(config.URL), l)
+		err = errors.Wrap(err, "error creating influxdb monitor")
+	}
+	if err != nil {
 		goto err
 	}
 
@@ -86,9 +124,10 @@ func installMonitor(ctx context.Context, l log.Logger) (monitoring.Monitor, io.C
 
 err:
 	l.Warn().Log(
-		"msg", errors.Wrap(err, "falling back to log monitor: error creating influxdb monitor"),
+		"msg", errors.Wrap(err, "falling back to log monitor"),
 		"err", err,
 	)
+	closer()
 	return monitoring.NewLogMonitor(l), noopCloser, ctx
 }
 
@@ -124,12 +163,6 @@ func installErrorNotifier(ctx context.Context, l log.Logger) (errornotifier.Noti
 ////////////////////////////////////////////////////////////
 // Credentials: Vault, AWS
 
-type key int
-
-const (
-	vaultKey key = iota
-)
-
 func credentialsConfig(serviceName string) credentials.Config {
 	config := credentials.Config{}
 
@@ -145,18 +178,23 @@ func credentialsConfig(serviceName string) credentials.Config {
 	return config
 }
 
-func installVault(ctx context.Context, l log.Logger, config vault.Config) (*api.Client, context.Context) {
-	vault, err := vault.NewVaultClient(l, config)
+func installVault(ctx context.Context, l log.Logger, config vault.Config) (*vault.Client, context.Context) {
+	v, err := vault.NewVaultClient(l, config)
 	if err != nil {
 		panic(err)
 	}
 
-	return vault, context.WithValue(ctx, vaultKey, vault)
+	return v, vault.Context(ctx, v)
 }
 
-func installAWSSession(ctx context.Context, l log.Logger, awsPath string, vault *api.Client) context.Context {
+func installAWSSession(ctx context.Context, l log.Logger, awsPath string, vault *vault.Client) context.Context {
 
-	awsSession, err := aws.NewSession(l, vault, awsPath)
+	var client *api.Client
+	if vault != nil {
+		client = vault.Client
+	}
+
+	awsSession, err := aws.NewSession(l, client, awsPath)
 	if err != nil {
 		panic(err)
 	}

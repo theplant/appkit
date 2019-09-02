@@ -177,6 +177,15 @@ func NewInfluxdbMonitor(config InfluxMonitorConfig, logger log.Logger) (Monitor,
 		return nil, func() {}, errors.Wrapf(err, "couldn't initialize influxdb http client with http config %+v", httpConfig)
 	}
 
+	return NewInfluxdbMonitorWithClient(config, logger, client)
+}
+
+func NewInfluxdbMonitorWithClient(config InfluxMonitorConfig, logger log.Logger, client influxdb.Client) (Monitor, func(), error) {
+	cfg, err := parseInfluxMonitorConfig(config)
+	if err != nil {
+		return nil, func() {}, err
+	}
+
 	logger = logger.With("context", "appkit/monitoring.influxdb")
 
 	monitor := &influxdbMonitor{

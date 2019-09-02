@@ -136,8 +136,16 @@ back-end.
 
 # Credentials
 
-Package to provide single interface for acquiring AWS (-only, for now)
-credentials for apps running on different platforms.
+Package to provide single interface for acquiring credentials for apps
+running on different platforms. Credentials that can be sourced:
+
+* AWS
+* InfluxDB
+
+Places to source credentials from:
+
+* [Vault](https://www.vaultproject.io)
+* Local environment
 
 # [Service](service/README.md)
 

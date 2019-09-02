@@ -31,7 +31,7 @@ func main() {
 		fmt.Println(err)
 	}
 
-	session, err := aws.NewSession(logger, vault, config.AWSPath)
+	session, err := aws.NewSession(logger, vault.Client, config.AWSPath)
 	if err != nil {
 		fmt.Println(err)
 	}
