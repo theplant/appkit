@@ -20,6 +20,12 @@ type CrossSiteConfig struct {
 	// browser behaviour with CORS (deny access to response body).
 	RawAllowedOrigins string `required:"true"`
 
+	// RawAllowedHeaders is comma-separated list of headers that are
+	// allowed to make requests to the server. Used to reject requests
+	// for CSRF, and to control browser behaviour with CORS (deny
+	// access to response body).
+	RawAllowedHeaders string
+
 	// AllowCredentials configures whether CORS requests are allowed to send "credentials":
 	//
 	// > Servers can also notify clients whether "credentials"
@@ -68,10 +74,16 @@ func SecureMiddleware(logger log.Logger, cs CrossSiteConfig) Middleware {
 		allowedOrigins[i] = strings.TrimSpace(allowedOrigin)
 	}
 
+	allowedHeaders := strings.Split(cs.RawAllowedHeaders, ",")
+	for i, allowedHeader := range allowedHeaders {
+		allowedHeaders[i] = strings.TrimSpace(allowedHeader)
+	}
+	allowedHeaders = append(allowedHeaders, cs.CSRFRequiredHeader)
+
 	return Compose(
 		verifyHeader(logger, cs.CSRFRequiredHeader),
 		verifyOrigin(allowedOrigins, logger),
-		corsPolicy(allowedOrigins, cs, logger),
+		corsPolicy(allowedOrigins, allowedHeaders, cs, logger),
 	)
 }
 
@@ -196,19 +208,19 @@ func verifyOrigin(allowed []string, l log.Logger) Middleware {
 
 // corsPolicy will use github.com/rs/cors to define a CORS policy for
 // the system, based on the CrossSiteConfig
-func corsPolicy(allowedOrigins []string, cs CrossSiteConfig, l log.Logger) Middleware {
+func corsPolicy(allowedOrigins []string, allowedHeaders []string, cs CrossSiteConfig, l log.Logger) Middleware {
 	l.Info().Log(
 		"msg", fmt.Sprintf("CORS: allowed at origins: %v, allowed with credentials: %v, allowed CSRF header %v", allowedOrigins, cs.AllowCredentials, cs.CSRFRequiredHeader),
 		"during", "appkit/server.corsPolicy",
 		"allowed_origins", strings.Join(allowedOrigins, ","),
 		"allow_credentials", cs.AllowCredentials,
-		"allowed_headers", cs.CSRFRequiredHeader,
+		"allowed_headers", strings.Join(allowedHeaders, ","),
 	)
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   allowedOrigins,
 		AllowCredentials: cs.AllowCredentials,
-		AllowedHeaders:   []string{cs.CSRFRequiredHeader},
+		AllowedHeaders:   allowedHeaders,
 	})
 
 	return c.Handler

@@ -339,6 +339,115 @@ func ExampleCors_CSRFHeaderRequest() {
 	// Access-Control-Max_age: []
 }
 
+func ExampleCors_NoRequestHeaders() {
+	cfg := CrossSiteConfig{
+		RawAllowedOrigins: "http://example.com",
+		RawAllowedHeaders: "", // Explicitly blank
+	}
+
+	s, req := setup(cfg)
+
+	req.Method = "OPTIONS"
+
+	req.Header.Add("Access-Control-Request-Method", "POST")
+	req.Header.Add("origin", "http://example.com")
+
+	printCORSHeaders(exec(s, req))
+
+	// Output: 200
+	// Vary: [Origin Access-Control-Request-Method Access-Control-Request-Headers]
+	// Access-Control-Allow-Origin: [http://example.com]
+	// Access-Control-Allow-Methods: [POST]
+	// Access-Control-Allow-Headers: []
+	// Access-Control-Allow-Credentials: []
+	// Access-Control-Max_age: []
+}
+
+func ExampleCors_MultipleRequestHeaders() {
+	cfg := CrossSiteConfig{
+		RawAllowedOrigins:  "http://example.com",
+		CSRFRequiredHeader: "X-Csrf",
+		RawAllowedHeaders:  "X-Header1,X-Header2",
+	}
+
+	s, req := setup(cfg)
+
+	req.Method = "OPTIONS"
+
+	req.Header.Add("Access-Control-Request-Method", "POST")
+	req.Header.Add("Access-Control-Request-Headers", "X-Csrf")
+	req.Header.Add("origin", "http://example.com")
+
+	printCORSHeaders(exec(s, req))
+
+	s, req = setup(cfg)
+
+	req.Method = "OPTIONS"
+
+	req.Header.Add("Access-Control-Request-Method", "POST")
+	req.Header.Add("Access-Control-Request-Headers", "X-Header1")
+	req.Header.Add("origin", "http://example.com")
+
+	printCORSHeaders(exec(s, req))
+
+	s, req = setup(cfg)
+
+	req.Method = "OPTIONS"
+
+	req.Header.Add("Access-Control-Request-Method", "POST")
+	req.Header.Add("Access-Control-Request-Headers", "X-Header2")
+	req.Header.Add("origin", "http://example.com")
+
+	printCORSHeaders(exec(s, req))
+
+	// Output: 200
+	// Vary: [Origin Access-Control-Request-Method Access-Control-Request-Headers]
+	// Access-Control-Allow-Origin: [http://example.com]
+	// Access-Control-Allow-Methods: [POST]
+	// Access-Control-Allow-Headers: [X-Csrf]
+	// Access-Control-Allow-Credentials: []
+	// Access-Control-Max_age: []
+	// 200
+	// Vary: [Origin Access-Control-Request-Method Access-Control-Request-Headers]
+	// Access-Control-Allow-Origin: [http://example.com]
+	// Access-Control-Allow-Methods: [POST]
+	// Access-Control-Allow-Headers: [X-Header1]
+	// Access-Control-Allow-Credentials: []
+	// Access-Control-Max_age: []
+	// 200
+	// Vary: [Origin Access-Control-Request-Method Access-Control-Request-Headers]
+	// Access-Control-Allow-Origin: [http://example.com]
+	// Access-Control-Allow-Methods: [POST]
+	// Access-Control-Allow-Headers: [X-Header2]
+	// Access-Control-Allow-Credentials: []
+	// Access-Control-Max_age: []
+}
+
+func ExampleCors_DisallowedHeader() {
+	cfg := CrossSiteConfig{
+		RawAllowedOrigins: "http://example.com",
+		RawAllowedHeaders: "X-Header",
+	}
+
+	s, req := setup(cfg)
+
+	req.Method = "OPTIONS"
+
+	req.Header.Add("Access-Control-Request-Method", "POST")
+	req.Header.Add("Access-Control-Request-Header", "Evil-Header")
+	req.Header.Add("origin", "http://example.com")
+
+	printCORSHeaders(exec(s, req))
+
+	// Output: 200
+	// Vary: [Origin Access-Control-Request-Method Access-Control-Request-Headers]
+	// Access-Control-Allow-Origin: [http://example.com]
+	// Access-Control-Allow-Methods: [POST]
+	// Access-Control-Allow-Headers: []
+	// Access-Control-Allow-Credentials: []
+	// Access-Control-Max_age: []
+}
+
 func testHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("executed handler")
 }
