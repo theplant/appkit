@@ -1,3 +1,9 @@
+# PR [#43](https://github.com/theplant/appkit/pull/43)
+
+* Allow configure `Access-Control-Allow-Headers` via
+  `CORS_RawAllowedHeaders` for CORS middleware in appkit/service
+  package.
+
 # PR [#39](https://github.com/theplant/appkit/pull/39)
 
 * Add monitoring InfluxDB client that sources InfluxDB credentials
