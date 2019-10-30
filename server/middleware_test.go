@@ -46,3 +46,14 @@ func ExampleCompositionOrder() {
 	// <- bottom
 	// 204
 }
+
+func exec(s *httptest.Server, req *http.Request) *http.Response {
+	resp, err := s.Client().Do(req)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(resp.StatusCode)
+
+	return resp
+}

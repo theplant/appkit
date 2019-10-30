@@ -1,3 +1,9 @@
+# PR [#44](https://github.com/theplant/appkit/pull/44)
+
+## Breaking Changes
+
+* Remove `server.SecureMiddleware` which was introduced in [#14](https://github.com/theplant/appkit/pull/14).
+
 # PR [#39](https://github.com/theplant/appkit/pull/39)
 
 * Add monitoring InfluxDB client that sources InfluxDB credentials
