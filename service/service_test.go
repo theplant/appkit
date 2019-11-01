@@ -129,7 +129,7 @@ func TestBasicAuth(t *testing.T) {
 	}
 }
 
-func TestCORS(t *testing.T) {
+func TestCORS_AllowedOrigins(t *testing.T) {
 	// Loose testing of CORS configuration
 	os.Setenv("CORS_RawAllowedOrigins", "cors1.example.com,cors2.example.com")
 	defer func() { os.Unsetenv("CORS_RawAllowedOrigins") }()
@@ -174,6 +174,55 @@ func TestCORS(t *testing.T) {
 			if w.Header().Get("Access-Control-Allow-Origin") != c.expected {
 				t.Fatalf("unexpected response, wanted %q, got %q", c.origin, w.Header().Get("Access-Control-Allow-Origin"))
 
+			}
+		})
+	}
+}
+
+func TestCORS_AllowedHeaders(t *testing.T) {
+	// Loose testing of CORS configuration
+	os.Setenv("CORS_RawAllowedOrigins", "cors.example.com")
+	defer func() { os.Unsetenv("CORS_RawAllowedOrigins") }()
+
+	os.Setenv("CORS_RawAllowedHeaders", "X-Header1,X-Header2")
+	defer func() { os.Unsetenv("CORS_RawAllowedHeaders") }()
+
+	ctx, c := serviceContext()
+	defer c.Close()
+
+	m, c2, err := middleware(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c2.Close()
+
+	h := m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(204)
+	}))
+
+	cases := []struct {
+		header   string
+		expected string
+	}{
+		{header: "X-Header1", expected: "X-Header1"},
+		{header: "X-Header2", expected: "X-Header2"},
+		{header: "unknown-header", expected: ""},
+	}
+
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("request with %+v", c), func(t *testing.T) {
+			r := httptest.NewRequest("OPTIONS", "/", nil)
+
+			r.Header.Set("Origin", "cors.example.com")
+			r.Header.Set("Access-Control-Request-Method", "GET")
+			r.Header.Set("Access-Control-Request-Headers", c.header)
+
+			w := httptest.ResponseRecorder{}
+
+			h.ServeHTTP(&w, r)
+
+			if w.Header().Get("Access-Control-Allow-Headers") != c.expected {
+				t.Fatalf("unexpected response, wanted %q, got %q", c.expected, w.Header().Get("Access-Control-Allow-Headers"))
 			}
 		})
 	}
