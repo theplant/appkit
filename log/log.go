@@ -3,12 +3,10 @@ package log
 import (
 	"fmt"
 	"io"
-	"os"
-	"time"
-
-	"strings"
-
 	stdl "log"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"

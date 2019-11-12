@@ -1,12 +1,14 @@
 package log_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"go/build"
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"bytes"
 
@@ -120,4 +122,33 @@ func TestHuman(t *testing.T) {
 		"msg", fmt.Sprintf("auto-migrating %T", "table 1"),
 		"table", "felix",
 	)
+}
+
+var testContext = log.Context(context.TODO(), log.Default().With("app", "testapp"))
+
+/*
+log.Start will try to get logger from context, and log from there, every log with the instance
+will print duration=301.356ms field with the log, the time the log time duration since log.Start
+
+Example output:
+
+```
+15:16:20.34 hello app=testapp method=TestLogger store_id=100 duration=0.001ms
+15:16:20.64 app=testapp method=TestLogger store_id=100 request_id=123 duration=300.542ms
+15:16:20.64 debug app=testapp method=TestLogger store_id=100 duration=300.616ms
+15:16:20.64 info app=testapp method=TestLogger store_id=100 duration=300.635ms
+15:16:20.64 WrapError error: WrapError error app=testapp method=TestLogger store_id=100 duration=300.746ms
+```
+*/
+func ExampleStart_log() {
+	l := log.Start(testContext).With("method", "TestLogger", "store_id", 100)
+	l.Log("msg", "hello")
+	time.Sleep(100 * time.Millisecond)
+	l.With("request_id", "123").Log()
+	l.Debug().Log("msg", "debug")
+	time.Sleep(200 * time.Millisecond)
+	l.Info().Log("msg", "info")
+	l.WrapError(errors.New("WrapError error")).Log()
+	l.WithError(errors.New("WithError error")).Log()
+	//Output:
 }
