@@ -2,8 +2,11 @@ package log
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"time"
 
+	"github.com/go-kit/kit/log"
 	"github.com/theplant/appkit/contexts/trace"
 )
 
@@ -38,6 +41,17 @@ func FromContext(c context.Context) (Logger, bool) {
 		return logger, ok
 	}
 	return Logger{}, false
+}
+
+func Start(ctx context.Context) Logger {
+	l, ok := FromContext(ctx)
+	if !ok {
+		panic("context doesn't have logger, try to use log.Context(ctx, logger) to setup logger")
+	}
+	start := time.Now()
+	return l.With("duration", log.Valuer(func() interface{} {
+		return fmt.Sprintf("%.3fms", float64(time.Since(start))/float64(time.Millisecond))
+	}))
 }
 
 // ForceContext extracts a Logger from a (possibly nil) context, or

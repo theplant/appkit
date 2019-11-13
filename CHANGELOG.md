@@ -1,3 +1,7 @@
+# PR [#45](https://github.com/theplant/appkit/pull/45)
+
+* Add log.Start(ctx) to include duration=123.11ms in the following log output that use it.
+
 # PR [#39](https://github.com/theplant/appkit/pull/39)
 
 * Add monitoring InfluxDB client that sources InfluxDB credentials
