@@ -14,6 +14,7 @@ import (
 )
 
 const humanLogEnvName = "APPKIT_LOG_HUMAN"
+const jsonLogEnvName = "APPKIT_LOG_JSON"
 
 type Logger struct {
 	log.Logger
@@ -85,9 +86,14 @@ func Default() Logger {
 		return Human()
 	}
 
-	var timer log.Valuer = func() interface{} { return time.Now().Format(time.RFC3339Nano) }
+	json := strings.ToLower(os.Getenv(jsonLogEnvName))
 
 	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+	if len(json) > 0 && json != "false" && json != "0" {
+		l = log.NewJSONLogger(log.NewSyncWriter(os.Stdout))
+	}
+
+	var timer log.Valuer = func() interface{} { return time.Now().Format(time.RFC3339Nano) }
 
 	lg := Logger{
 		Logger: l,
