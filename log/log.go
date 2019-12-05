@@ -13,7 +13,20 @@ import (
 	"github.com/theplant/appkit/kerrs"
 )
 
-const humanLogEnvName = "APPKIT_LOG_HUMAN"
+var isHuman bool
+var isJSON bool
+
+func init() {
+	human := strings.ToLower(os.Getenv("APPKIT_LOG_HUMAN"))
+	if len(human) > 0 && human != "false" && human != "0" {
+		isHuman = true
+	}
+
+	json := strings.ToLower(os.Getenv("APPKIT_LOG_JSON"))
+	if len(json) > 0 && json != "false" && json != "0" {
+		isJSON = true
+	}
+}
 
 type Logger struct {
 	log.Logger
@@ -80,14 +93,16 @@ func (l Logger) Warn() log.Logger {
 }
 
 func Default() Logger {
-	human := strings.ToLower(os.Getenv(humanLogEnvName))
-	if len(human) > 0 && human != "false" && human != "0" {
+	if isHuman {
 		return Human()
 	}
 
-	var timer log.Valuer = func() interface{} { return time.Now().Format(time.RFC3339Nano) }
-
 	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+	if isJSON {
+		l = log.NewJSONLogger(log.NewSyncWriter(os.Stdout))
+	}
+
+	var timer log.Valuer = func() interface{} { return time.Now().Format(time.RFC3339Nano) }
 
 	lg := Logger{
 		Logger: l,
@@ -133,8 +148,11 @@ func (l GormLogger) Print(values ...interface{}) {
 		level, source := values[0], values[1]
 		log := l.With("type", level, "source", source)
 		if level == "sql" {
-			dur, sql := values[2].(time.Duration), values[3].(string)
-			sqlLog(log, dur, sql)
+			dur, sql, rowsAffected := values[2].(time.Duration), values[3].(string), values[5].(int64)
+			if isHuman {
+				sql = humanSql(values)
+			}
+			sqlLog(log, dur, sql, rowsAffected)
 			return
 		} else if level == "log" {
 			logLog(log, values[2:])
@@ -144,7 +162,7 @@ func (l GormLogger) Print(values ...interface{}) {
 	}
 }
 
-func sqlLog(l Logger, dur time.Duration, query string) {
+func sqlLog(l Logger, dur time.Duration, query string, rowsAffected int64) {
 	logger := l.Debug()
 	if dur > 100*time.Millisecond {
 		logger = l.Warn()
@@ -152,7 +170,7 @@ func sqlLog(l Logger, dur time.Duration, query string) {
 		logger = l.Info()
 	}
 
-	args := []interface{}{"query_us", int64(dur / time.Microsecond), "query", query}
+	args := []interface{}{"query_us", int64(dur / time.Microsecond), "query", query, "rows_affected", rowsAffected}
 
 	logger.Log(args...)
 }
