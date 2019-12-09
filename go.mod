@@ -31,7 +31,6 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/rs/cors v1.7.0
 	github.com/theplant/testingutils v0.0.0-20190603093022-26d8b4d95c61
-	github.com/uber-go/atomic v1.5.0 // indirect
 	github.com/uber/jaeger-client-go v2.19.0+incompatible
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	go.uber.org/atomic v1.5.0 // indirect
@@ -40,5 +39,3 @@ require (
 	gonum.org/v1/gonum v0.6.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )
-
-replace github.com/uber-go/atomic v1.5.0 => go.uber.org/atomic v1.5.0
