@@ -44,11 +44,14 @@ func FromContext(c context.Context) (Logger, bool) {
 }
 
 func Start(ctx context.Context) Logger {
+	return StartWith(ctx, time.Now())
+}
+
+func StartWith(ctx context.Context, start time.Time) Logger {
 	l, ok := FromContext(ctx)
 	if !ok {
 		panic("context doesn't have logger, try to use log.Context(ctx, logger) to setup logger")
 	}
-	start := time.Now()
 	return l.With("duration", log.Valuer(func() interface{} {
 		return fmt.Sprintf("%.3fms", float64(time.Since(start))/float64(time.Millisecond))
 	}))
