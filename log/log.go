@@ -22,9 +22,10 @@ func init() {
 		isHuman = true
 	}
 
+	isJSON = true
 	json := strings.ToLower(os.Getenv("APPKIT_LOG_JSON"))
-	if len(json) > 0 && json != "false" && json != "0" {
-		isJSON = true
+	if json == "false" || json == "0" {
+		isJSON = false
 	}
 }
 
