@@ -82,7 +82,7 @@ func (n *logNotifier) Notify(val interface{}, req *http.Request, context map[str
 
 	_ = logger.Error().Log(
 		"err", val,
-		"context", context,
+		"context", fmt.Sprint(context),
 		"msg", fmt.Sprintf("error notification: %v", val),
 		"stacktrace", string(debug.Stack()),
 	)
