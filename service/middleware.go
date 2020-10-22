@@ -44,6 +44,7 @@ func middleware(ctx context.Context) (server.Middleware, io.Closer, error) {
 		httpAuthMiddleware(logger),
 		corsMiddleware(logger),
 		newRelicMiddleware(logger),
+		hstsMiddleware(logger),
 		monitoring.WithMonitor(monitoring.ForceContext(ctx)),
 		errornotifier.Recover(errornotifier.ForceContext(ctx)),
 		tracer,
@@ -253,6 +254,51 @@ func withAWSSession(s *session.Session) server.Middleware {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h.ServeHTTP(w, r.WithContext(aws.Context(r.Context(), s)))
+		})
+	}
+}
+
+////////////////////////////////////////////////////////////
+// HSTS
+
+type hstsConfig struct {
+	// seconds
+	MaxAge            int
+	IncludeSubDomains bool
+}
+
+func hstsMiddleware(logger log.Logger) server.Middleware {
+	config := hstsConfig{}
+
+	err := configor.New(&configor.Config{ENVPrefix: "HSTS"}).Load(&config)
+	if err != nil {
+		panic(err)
+	}
+
+	if config.MaxAge <= 0 {
+		logger.Warn().Log(
+			"msg", "not enabling HSTS middleware: max-age of HSTS equal or less than zero",
+			"max_age", config.MaxAge,
+			"include_sub_domains", config.IncludeSubDomains,
+		)
+		return server.IdMiddleware
+	}
+
+	hstsVal := fmt.Sprintf("max-age=%d", config.MaxAge)
+	if config.IncludeSubDomains {
+		hstsVal += "; includeSubDomains"
+	}
+
+	logger.Info().Log(
+		"msg", "enabling HSTS middleware",
+		"max_age", config.MaxAge,
+		"include_sub_domains", config.IncludeSubDomains,
+	)
+
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("Strict-Transport-Security", hstsVal)
+			h.ServeHTTP(w, r)
 		})
 	}
 }
