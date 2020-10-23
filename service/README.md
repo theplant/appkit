@@ -39,10 +39,11 @@ In request-processing order:
 2. Request tracing via Opentracing/Jaeger
 3. Notification of `panic`s to Airbrake
 4. Logging request metrics in InfluxDB
-5. Sending request information to New Relic
-6. CORS handling
-7. HTTP Basic Authentication
-8. Adding AWS session to request context
+5. Add HSTS header
+6. Sending request information to New Relic
+7. CORS handling
+8. HTTP Basic Authentication
+9. Adding AWS session to request context
 
 # Configuration
 
@@ -152,6 +153,21 @@ client](https://github.com/jaegertracing/jaeger-client-go).
 
 If `JAEGER_SERVICE_NAME` is blank, `$SERVICE_NAME` will be used.
 
+## HSTS
+
+[HSTS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security)
+
+Environment variables:
+
+* `HSTS_MaxAge`: the time in seconds value for
+  [`max-age`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security#Directives)
+  .
+
+* `HSTS_IncludeSubDomains`: boolean-ish value for
+  [`includeSubDomains`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security#Directives)
+  .
+
+HSTS header will only be added when the value of `HSTS_MaxAge` is greater than 0
 
 # Design Background
 
