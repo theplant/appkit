@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"runtime"
 	"strings"
 	"time"
@@ -56,10 +55,8 @@ func LogRequest(h http.Handler) http.Handler {
 			// Will absorb panics in earlier middleware
 			if err := recover(); err != nil {
 				stack := stack(7)
-				httprequest, _ := httputil.DumpRequest(r, false)
 				l = l.With(
 					"err", err,
-					"request", string(httprequest),
 					"stack", string(stack),
 				)
 				msg = fmt.Sprintf("%s (panic: %v)", msg, err)
