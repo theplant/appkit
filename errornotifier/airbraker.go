@@ -40,6 +40,12 @@ type AirbrakeConfig struct {
 	ProjectID   int64
 	Token       string
 	Environment string `default:"dev"`
+
+	KeysBlocklist []interface{}
+}
+
+var defaultKeysBlocklist = []interface{}{
+	"Authorization",
 }
 
 // NewAirbrakeNotifier constructs Airbrake notifier from given config
@@ -57,10 +63,15 @@ func NewAirbrakeNotifier(c AirbrakeConfig) (Notifier, io.Closer, error) {
 		return nil, nil, fmt.Errorf("invalid Airbrake project id: %d", c.ProjectID)
 	}
 
+	if c.KeysBlocklist == nil {
+		c.KeysBlocklist = defaultKeysBlocklist
+	}
+
 	notifier := gobrake.NewNotifierWithOptions(&gobrake.NotifierOptions{
-		ProjectId:   c.ProjectID,
-		ProjectKey:  c.Token,
-		Environment: c.Environment,
+		ProjectId:     c.ProjectID,
+		ProjectKey:    c.Token,
+		Environment:   c.Environment,
+		KeysBlacklist: c.KeysBlocklist,
 	})
 
 	return &airbrakeNotifier{notifier: notifier}, notifier, nil
