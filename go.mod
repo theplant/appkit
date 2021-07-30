@@ -12,7 +12,7 @@ require (
 	github.com/go-logfmt/logfmt v0.3.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
-	github.com/google/uuid v1.0.0
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/sessions v1.2.0
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/vault/api v1.0.4
