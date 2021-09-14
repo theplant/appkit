@@ -40,18 +40,13 @@ func ContextAndMiddleware() (context.Context, server.Middleware, io.Closer, erro
 }
 
 func ListenAndServe(app func(context.Context, *http.ServeMux) error) {
-	ctx, closer := serviceContext()
+	ctx, m, closer, err := ContextAndMiddleware()
+	if err != nil {
+		return
+	}
 	defer closer.Close()
 
 	logger := log.ForceContext(ctx)
-
-	m, c, err := middleware(ctx)
-	if err != nil {
-		err = errors.Wrap(err, "error configuring service middleware")
-		logger.WithError(err).Log()
-		return
-	}
-	defer c.Close()
 
 	mux := http.NewServeMux()
 
