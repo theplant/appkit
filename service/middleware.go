@@ -136,6 +136,8 @@ type corsConfig struct {
 	RawAllowedOrigins string
 	AllowedOrigins    []string
 	AllowCredentials  bool
+	RawAllowedHeaders string
+	AllowedHeaders    []string
 }
 
 func corsMiddleware(logger log.Logger) server.Middleware {
@@ -151,6 +153,7 @@ func corsMiddleware(logger log.Logger) server.Middleware {
 			"msg", "not enabling CORS middleware: CORS configuration is blank",
 			"raw_allowed_origins", config.RawAllowedOrigins,
 			"allowed_credentials", config.AllowCredentials,
+			"raw_allowed_headers", config.RawAllowedHeaders,
 		)
 		return server.IdMiddleware
 	}
@@ -160,15 +163,22 @@ func corsMiddleware(logger log.Logger) server.Middleware {
 		config.AllowedOrigins[i] = strings.TrimSpace(allowedOrigin)
 	}
 
+	config.AllowedHeaders = strings.Split(config.RawAllowedHeaders, ",")
+	for i, allowedHeader := range config.AllowedHeaders {
+		config.AllowedHeaders[i] = strings.TrimSpace(allowedHeader)
+	}
+
 	c := cors.New(cors.Options{
 		AllowedOrigins:   config.AllowedOrigins,
 		AllowCredentials: config.AllowCredentials,
+		AllowedHeaders:   config.AllowedHeaders,
 	})
 
 	logger.Info().Log(
 		"msg", "enabling CORS middleware",
 		"allowed_origins", strings.Join(config.AllowedOrigins, ","),
 		"allow_credentials", config.AllowCredentials,
+		"allowed_headers", strings.Join(config.AllowedHeaders, ","),
 	)
 
 	return c.Handler

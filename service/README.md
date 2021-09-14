@@ -87,6 +87,10 @@ Environment variables:
   [`Access-Control-Allow-Credentials`](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#Access-Control-Allow-Credentials)
   HTTP header.
 
+* `CORS_RawAllowedHeaders`: comma-separated list of allowed values for
+  [`Access-Control-Allow-Headers`](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#access-control-allow-headers)
+  HTTP header.
+
 ## Vault/AWS Session
     
 Environment variables:
