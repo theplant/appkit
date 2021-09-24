@@ -45,9 +45,11 @@ func StartSpan(ctx context.Context, name string) (context.Context, *span) {
 	return newContext(ctx, &s), &s
 }
 
-func EndSpan(l log.Logger, s *span, err error) {
+func EndSpan(ctx context.Context, s *span, err error) {
 	s.recordError(err)
 	s.end()
+
+	l := log.ForceContext(ctx)
 	logSpan(l, s)
 }
 
