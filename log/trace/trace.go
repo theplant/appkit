@@ -9,6 +9,11 @@ import (
 	"github.com/theplant/appkit/log"
 )
 
+const (
+	SpanTypeKey = "span.type"
+	SpanRoleKey = "span.role"
+)
+
 func StartSpan(ctx context.Context, name string) (context.Context, *span) {
 	var (
 		parent = fromContext(ctx)
@@ -16,6 +21,8 @@ func StartSpan(ctx context.Context, name string) (context.Context, *span) {
 		traceID               string
 		parentSpanID          string
 		inheritableAttributes map[string]interface{}
+
+		startTime = time.Now()
 	)
 
 	if parent == nil {
@@ -37,7 +44,7 @@ func StartSpan(ctx context.Context, name string) (context.Context, *span) {
 		spanID:       uuid.New().String(),
 		spanContext:  name,
 
-		startTime: time.Now(),
+		startTime: &startTime,
 
 		inheritableAttributes: inheritableAttributes,
 	}
@@ -54,13 +61,13 @@ func EndSpan(ctx context.Context, s *span, err error) {
 }
 
 func logSpan(log log.Logger, s *span) {
-	dur := s.endTime.Sub(s.startTime).Milliseconds()
+	durMS := s.Duration().Milliseconds()
 	l := log.With(
 		"ts", s.startTime.Format(time.RFC3339Nano),
 		"trace.id", s.traceID,
 		"span.id", s.spanID,
 		"span.context", s.spanContext,
-		"span.dur_ms", dur,
+		"span.dur_ms", durMS,
 	)
 
 	if s.spanParentID != "" {
@@ -81,14 +88,14 @@ func logSpan(log log.Logger, s *span) {
 
 	if s.err != nil {
 		l.Error().Log(
-			"msg", fmt.Sprintf("%s (%v) -> %s (%T)", s.spanContext, dur, s.err, s.err),
+			"msg", fmt.Sprintf("%s (%v) -> %s (%T)", s.spanContext, durMS, s.err, s.err),
 			"span.err", s.err,
 			"span.err_type", errType(s.err),
 			"span.with_err", 1,
 		)
 	} else if r := recover(); r != nil {
 		l.Error().Log(
-			"msg", fmt.Sprintf("%s (%v) -> panic: %s (%T)", s.spanContext, dur, r, r),
+			"msg", fmt.Sprintf("%s (%v) -> panic: %s (%T)", s.spanContext, durMS, r, r),
 			"span.err", r,
 			"span.panic", 1,
 			"span.err_type", errType(s.err),
@@ -96,7 +103,7 @@ func logSpan(log log.Logger, s *span) {
 		)
 		panic(r)
 	} else {
-		l.Info().Log("msg", fmt.Sprintf("%s (%v) -> success", s.spanContext, dur))
+		l.Info().Log("msg", fmt.Sprintf("%s (%v) -> success", s.spanContext, durMS))
 	}
 }
 
@@ -128,8 +135,8 @@ type span struct {
 	spanID       string
 	spanContext  string
 
-	startTime time.Time
-	endTime   time.Time
+	startTime *time.Time
+	endTime   *time.Time
 
 	err error
 
@@ -137,7 +144,14 @@ type span struct {
 	attributes            map[string]interface{}
 }
 
-func (s *span) AddInheritableAttributes(attributes ...Attribute) {
+func (s *span) Duration() time.Duration {
+	if s.startTime == nil || s.endTime == nil {
+		return 0
+	}
+	return s.endTime.Sub(*s.startTime)
+}
+
+func (s *span) AddInheritableAttributes(attributes ...attribute) {
 	if s.inheritableAttributes == nil {
 		s.inheritableAttributes = make(map[string]interface{})
 	}
@@ -146,7 +160,7 @@ func (s *span) AddInheritableAttributes(attributes ...Attribute) {
 	}
 }
 
-func (s *span) AddAttributes(attributes ...Attribute) {
+func (s *span) AddAttributes(attributes ...attribute) {
 	if s.attributes == nil {
 		s.attributes = make(map[string]interface{})
 	}
@@ -160,41 +174,25 @@ func (s *span) recordError(err error) {
 }
 
 func (s *span) end() {
-	s.endTime = time.Now()
+	endTime := time.Now()
+	s.endTime = &endTime
 }
 
-// Construct with one of: BoolAttribute, Int64Attribute, or StringAttribute.
-type Attribute struct {
+func Attribute(key string, value interface{}) attribute {
+	return attribute{key: key, value: value}
+}
+
+type attribute struct {
 	key   string
 	value interface{}
 }
 
 // Key returns the attribute's key
-func (a *Attribute) Key() string {
+func (a *attribute) Key() string {
 	return a.key
 }
 
 // Value returns the attribute's value
-func (a *Attribute) Value() interface{} {
+func (a *attribute) Value() interface{} {
 	return a.value
-}
-
-// BoolAttribute returns a bool-valued attribute.
-func BoolAttribute(key string, value bool) Attribute {
-	return Attribute{key: key, value: value}
-}
-
-// Int64Attribute returns an int64-valued attribute.
-func Int64Attribute(key string, value int64) Attribute {
-	return Attribute{key: key, value: value}
-}
-
-// Float64Attribute returns a float64-valued attribute.
-func Float64Attribute(key string, value float64) Attribute {
-	return Attribute{key: key, value: value}
-}
-
-// StringAttribute returns a string-valued attribute.
-func StringAttribute(key string, value string) Attribute {
-	return Attribute{key: key, value: value}
 }
