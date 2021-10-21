@@ -31,7 +31,7 @@ func DoWork(ctx context.Context) err error {
 }
 ```
 
-And you can add inheritable attributes to a span. They will be inherited by children spans and printed into logs :
+And you can add inheritable attributes to a span. They will be inherited by child spans and printed into logs :
 
 ```
 func DoWork(ctx context.Context) err error {
