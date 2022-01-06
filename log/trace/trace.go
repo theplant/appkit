@@ -19,17 +19,13 @@ func StartSpan(ctx context.Context, name string) (context.Context, *span) {
 		parent = fromContext(ctx)
 
 		traceID               string
-		parentSpanID          string
 		inheritableAttributes map[string]interface{}
-
-		startTime = time.Now()
 	)
 
 	if parent == nil {
 		traceID = uuid.New().String()
 	} else {
 		traceID = parent.traceID
-		parentSpanID = parent.spanID
 		if len(parent.inheritableAttributes) > 0 {
 			inheritableAttributes = make(map[string]interface{})
 			for k, v := range parent.inheritableAttributes {
@@ -39,12 +35,13 @@ func StartSpan(ctx context.Context, name string) (context.Context, *span) {
 	}
 
 	s := span{
-		traceID:      traceID,
-		spanParentID: parentSpanID,
-		spanID:       uuid.New().String(),
-		spanContext:  name,
+		parent: parent,
 
-		startTime: &startTime,
+		traceID:     traceID,
+		spanID:      uuid.New().String(),
+		spanContext: name,
+
+		startTime: time.Now(),
 
 		inheritableAttributes: inheritableAttributes,
 	}
@@ -56,13 +53,17 @@ func EndSpan(ctx context.Context, s *span, err error) {
 	s.recordError(err)
 	s.end()
 
-	l := log.ForceContext(ctx)
-	logSpan(l, s)
+	logSpan(ctx, s)
 }
 
-func logSpan(log log.Logger, s *span) {
-	durMS := s.Duration().Milliseconds()
-	l := log.With(
+func logSpan(ctx context.Context, s *span) {
+	var (
+		l        = log.ForceContext(ctx)
+		keysvals []interface{}
+		durMS    = s.Duration().Milliseconds()
+	)
+
+	keysvals = append(keysvals,
 		"ts", s.startTime.Format(time.RFC3339Nano),
 		"trace.id", s.traceID,
 		"span.id", s.spanID,
@@ -70,40 +71,41 @@ func logSpan(log log.Logger, s *span) {
 		"span.dur_ms", durMS,
 	)
 
-	if s.spanParentID != "" {
-		l = l.With("span.parent_id", s.spanParentID)
+	if s.parent != nil {
+		keysvals = append(keysvals, "span.parent_id", s.parent.spanID)
 	}
 
-	var keyvals []interface{}
 	for k, v := range s.inheritableAttributes {
 		if _, ok := s.attributes[k]; ok {
 			continue
 		}
-		keyvals = append(keyvals, k, v)
+		keysvals = append(keysvals, k, v)
 	}
 	for k, v := range s.attributes {
-		keyvals = append(keyvals, k, v)
+		keysvals = append(keysvals, k, v)
 	}
-	l = l.With(keyvals...)
 
 	if s.err != nil {
-		l.Error().Log(
+		keysvals = append(keysvals,
 			"msg", fmt.Sprintf("%s (%v) -> %s (%T)", s.spanContext, durMS, s.err, s.err),
 			"span.err", s.err,
 			"span.err_type", errType(s.err),
 			"span.with_err", 1,
 		)
+		l.Error().Log(keysvals...)
 	} else if r := recover(); r != nil {
-		l.Error().Log(
+		keysvals = append(keysvals,
 			"msg", fmt.Sprintf("%s (%v) -> panic: %s (%T)", s.spanContext, durMS, r, r),
 			"span.err", r,
 			"span.panic", 1,
 			"span.err_type", errType(s.err),
 			"span.with_err", 1,
 		)
+		l.Error().Log(keysvals...)
 		panic(r)
 	} else {
-		l.Info().Log("msg", fmt.Sprintf("%s (%v) -> success", s.spanContext, durMS))
+		keysvals = append(keysvals, "msg", fmt.Sprintf("%s (%v) -> success", s.spanContext, durMS))
+		l.Info().Log(keysvals...)
 	}
 }
 
@@ -130,12 +132,13 @@ func newContext(parent context.Context, s *span) context.Context {
 }
 
 type span struct {
-	traceID      string
-	spanParentID string
-	spanID       string
-	spanContext  string
+	parent *span
 
-	startTime *time.Time
+	traceID     string
+	spanID      string
+	spanContext string
+
+	startTime time.Time
 	endTime   *time.Time
 
 	err error
@@ -145,10 +148,10 @@ type span struct {
 }
 
 func (s *span) Duration() time.Duration {
-	if s.startTime == nil || s.endTime == nil {
+	if s.endTime == nil {
 		return 0
 	}
-	return s.endTime.Sub(*s.startTime)
+	return s.endTime.Sub(s.startTime)
 }
 
 func (s *span) AddInheritableAttributes(attributes ...attribute) {

@@ -26,7 +26,7 @@ You can add attributes to a span:
 func DoWork(ctx context.Context) err error {
 	...
 	span.AddAttributes(
-		Attribute("app.record_id", "id"),
+		trace.Attribute("app.record_id", "id"),
 	)
 }
 ```
@@ -37,7 +37,7 @@ And you can add inheritable attributes to a span. They will be inherited by chil
 func DoWork(ctx context.Context) err error {
 	...
 	span.AddInheritableAttributes(
-		Attribute("family.name", "..."),
+		trace.Attribute("family.name", "..."),
 	)
 }
 ```

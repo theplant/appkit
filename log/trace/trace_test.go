@@ -5,7 +5,25 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/theplant/appkit/log"
 )
+
+func BenchmarkStartSpan(b *testing.B) {
+	ctx := log.Context(context.Background(), log.Default())
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		ctx, s := StartSpan(ctx, "test")
+		s.AddInheritableAttributes(
+			Attribute("type", "test"),
+		)
+		s.AddAttributes(
+			Attribute("key1", "value1"),
+		)
+		EndSpan(ctx, s, nil)
+	}
+}
 
 func TestStartSpanWithoutParent(t *testing.T) {
 	ctx := context.Background()
@@ -23,11 +41,9 @@ func TestStartSpanWithoutParent(t *testing.T) {
 	if len(s.spanID) == 0 {
 		t.Fatalf("span id should not be blank")
 	}
-	if s.startTime == nil {
-		t.Fatalf("span start time should not be blank")
-	}
-	if len(s.spanParentID) != 0 {
-		t.Fatalf("parent span id should be blank")
+
+	if s.parent != nil {
+		t.Fatalf("parent span should be nil ")
 	}
 
 	sInCtx := fromContext(ctx)
@@ -55,11 +71,8 @@ func TestStartSpanWithParent(t *testing.T) {
 	if len(secondLevelS.spanID) == 0 {
 		t.Fatalf("span id should not be blank")
 	}
-	if secondLevelS.startTime == nil {
-		t.Fatalf("span start time should not be blank")
-	}
-	if secondLevelS.spanParentID != topLevelS.spanID {
-		t.Fatalf("parent span id should be equal to parent's id")
+	if secondLevelS.parent != topLevelS {
+		t.Fatalf("parent span should be equal to parent")
 	}
 	if secondLevelS.inheritableAttributes["family.name"] != "W" {
 		t.Fatalf("span should inherite specific attributes form parent")
