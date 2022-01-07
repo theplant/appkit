@@ -1,29 +1,29 @@
 package trace
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/theplant/appkit/log"
 )
 
-const (
-	SpanTypeKey = "span.type"
-	SpanRoleKey = "span.role"
-)
+var _defaultIDGenerator = defaultIDGenerator()
 
 func StartSpan(ctx context.Context, name string) (context.Context, *span) {
 	var (
-		parent = fromContext(ctx)
+		parent  = fromContext(ctx)
+		traceID TraceID
+		spanID  = _defaultIDGenerator.NewSpanID()
 
-		traceID               string
 		inheritableAttributes map[string]interface{}
 	)
 
 	if parent == nil {
-		traceID = uuid.New().String()
+		traceID = _defaultIDGenerator.NewTraceID()
 	} else {
 		traceID = parent.traceID
 		if len(parent.inheritableAttributes) > 0 {
@@ -38,7 +38,7 @@ func StartSpan(ctx context.Context, name string) (context.Context, *span) {
 		parent: parent,
 
 		traceID:     traceID,
-		spanID:      uuid.New().String(),
+		spanID:      spanID,
 		spanContext: name,
 
 		startTime: time.Now(),
@@ -60,7 +60,7 @@ func logSpan(ctx context.Context, s *span) {
 	var (
 		l        = log.ForceContext(ctx)
 		keysvals []interface{}
-		durMS    = s.Duration().Milliseconds()
+		dur      = s.Duration()
 	)
 
 	keysvals = append(keysvals,
@@ -68,7 +68,7 @@ func logSpan(ctx context.Context, s *span) {
 		"trace.id", s.traceID,
 		"span.id", s.spanID,
 		"span.context", s.spanContext,
-		"span.dur_ms", durMS,
+		"span.dur_ms", dur.Milliseconds(),
 	)
 
 	if s.parent != nil {
@@ -87,7 +87,7 @@ func logSpan(ctx context.Context, s *span) {
 
 	if s.err != nil {
 		keysvals = append(keysvals,
-			"msg", fmt.Sprintf("%s (%v) -> %s (%T)", s.spanContext, durMS, s.err, s.err),
+			"msg", fmt.Sprintf("%s (%v) -> %s (%T)", s.spanContext, dur, s.err, s.err),
 			"span.err", s.err,
 			"span.err_type", errType(s.err),
 			"span.with_err", 1,
@@ -95,7 +95,7 @@ func logSpan(ctx context.Context, s *span) {
 		l.Error().Log(keysvals...)
 	} else if r := recover(); r != nil {
 		keysvals = append(keysvals,
-			"msg", fmt.Sprintf("%s (%v) -> panic: %s (%T)", s.spanContext, durMS, r, r),
+			"msg", fmt.Sprintf("%s (%v) -> panic: %s (%T)", s.spanContext, dur, r, r),
 			"span.err", r,
 			"span.panic", 1,
 			"span.err_type", errType(s.err),
@@ -104,7 +104,9 @@ func logSpan(ctx context.Context, s *span) {
 		l.Error().Log(keysvals...)
 		panic(r)
 	} else {
-		keysvals = append(keysvals, "msg", fmt.Sprintf("%s (%v) -> success", s.spanContext, durMS))
+		keysvals = append(keysvals,
+			"msg", fmt.Sprintf("%s (%v) -> success", s.spanContext, dur),
+		)
 		l.Info().Log(keysvals...)
 	}
 }
@@ -134,8 +136,8 @@ func newContext(parent context.Context, s *span) context.Context {
 type span struct {
 	parent *span
 
-	traceID     string
-	spanID      string
+	traceID     TraceID
+	spanID      SpanID
 	spanContext string
 
 	startTime time.Time
@@ -179,6 +181,53 @@ func (s *span) recordError(err error) {
 func (s *span) end() {
 	endTime := time.Now()
 	s.endTime = &endTime
+}
+
+// TraceID is a unique identity of a trace.
+// nolint:revive // revive complains about stutter of `trace.TraceID`.
+type TraceID [16]byte
+
+var nilTraceID TraceID
+var _ json.Marshaler = nilTraceID
+
+// IsValid checks whether the trace TraceID is valid. A valid trace ID does
+// not consist of zeros only.
+func (t TraceID) IsValid() bool {
+	return !bytes.Equal(t[:], nilTraceID[:])
+}
+
+// MarshalJSON implements a custom marshal function to encode TraceID
+// as a hex string.
+func (t TraceID) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.String())
+}
+
+// String returns the hex string representation form of a TraceID
+func (t TraceID) String() string {
+	return hex.EncodeToString(t[:])
+}
+
+// SpanID is a unique identity of a span in a trace.
+type SpanID [8]byte
+
+var nilSpanID SpanID
+var _ json.Marshaler = nilSpanID
+
+// IsValid checks whether the SpanID is valid. A valid SpanID does not consist
+// of zeros only.
+func (s SpanID) IsValid() bool {
+	return !bytes.Equal(s[:], nilSpanID[:])
+}
+
+// MarshalJSON implements a custom marshal function to encode SpanID
+// as a hex string.
+func (s SpanID) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.String())
+}
+
+// String returns the hex string representation form of a SpanID
+func (s SpanID) String() string {
+	return hex.EncodeToString(s[:])
 }
 
 func Attribute(key string, value interface{}) attribute {

@@ -9,7 +9,7 @@ import (
 	"github.com/theplant/appkit/log"
 )
 
-func BenchmarkStartSpan(b *testing.B) {
+func BenchmarkTracing(b *testing.B) {
 	ctx := log.Context(context.Background(), log.Default())
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -19,7 +19,7 @@ func BenchmarkStartSpan(b *testing.B) {
 			Attribute("type", "test"),
 		)
 		s.AddAttributes(
-			Attribute("key1", "value1"),
+			Attribute("key", "value"),
 		)
 		EndSpan(ctx, s, nil)
 	}
