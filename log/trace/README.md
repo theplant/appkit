@@ -4,12 +4,18 @@ This package provides interfaces for tracing functions and printing traces into 
 
 ## Usage
 
+Import the package
+
+```
+import 'github.com/theplant/appkit/log/trace'
+```
+
 Inside a function, add these two lines to trace it:
 
 ```
 func DoWork(ctx context.Context) err error {
-	ctx, _ := StartSpan(ctx, "<span.context>")
-	defer func() { EndSpan(ctx, err) }()
+	ctx, _ := trace.StartSpan(ctx, "<span.context>")
+	defer func() { trace.EndSpan(ctx, err) }()
 }
 ```
 
