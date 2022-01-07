@@ -159,7 +159,7 @@ type span struct {
 	spanContext string
 
 	startTime time.Time
-	endTime   *time.Time
+	endTime   time.Time
 
 	err error
 
@@ -170,7 +170,7 @@ type span struct {
 }
 
 func (s *span) Duration() time.Duration {
-	if s.endTime == nil {
+	if s.endTime.IsZero() {
 		return 0
 	}
 	return s.endTime.Sub(s.startTime)
@@ -205,12 +205,11 @@ func (s *span) recordError(err error) {
 }
 
 func (s *span) end() {
-	if s.endTime != nil {
+	if !s.endTime.IsZero() {
 		return
 	}
 
-	endTime := time.Now()
-	s.endTime = &endTime
+	s.endTime = time.Now()
 }
 
 // TraceID is a unique identity of a trace.

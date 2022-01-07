@@ -95,8 +95,8 @@ func TestEndSpan(t *testing.T) {
 	if s.err != err {
 		t.Fatalf("span should record the err")
 	}
-	if s.endTime == nil {
-		t.Fatalf("span end time should not be nil")
+	if s.endTime.IsZero() {
+		t.Fatalf("span end time should not be zero")
 	}
 	if s.Duration() == 0 {
 		t.Fatalf("span duration should be greater than 0")
