@@ -16,7 +16,7 @@ var _defaultIDGenerator = defaultIDGenerator()
 
 func StartSpan(ctx context.Context, name string) (context.Context, *span) {
 	var (
-		parent  = fromContext(ctx)
+		parent  = FromContext(ctx)
 		traceID TraceID
 		spanID  = _defaultIDGenerator.NewSpanID()
 
@@ -50,10 +50,14 @@ func StartSpan(ctx context.Context, name string) (context.Context, *span) {
 	return newContext(ctx, &s), &s
 }
 
-func EndSpan(ctx context.Context, s *span, err error) {
+func EndSpan(ctx context.Context, err error) {
+	s := FromContext(ctx)
+	if s == nil {
+		return
+	}
+
 	s.recordError(err)
 	s.end()
-
 	logSpan(ctx, s)
 }
 
@@ -125,7 +129,7 @@ func errType(err interface{}) string {
 
 type contextKey struct{}
 
-func fromContext(ctx context.Context) *span {
+func FromContext(ctx context.Context) *span {
 	s, _ := ctx.Value(contextKey{}).(*span)
 	return s
 }

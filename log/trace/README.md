@@ -8,8 +8,8 @@ Inside a function, add these two lines to trace it:
 
 ```
 func DoWork(ctx context.Context) err error {
-	ctx, span := StartSpan(ctx, "<span.context>")
-	defer func() { EndSpan(ctx, span, err) }()
+	ctx, _ := StartSpan(ctx, "<span.context>")
+	defer func() { EndSpan(ctx, err) }()
 }
 ```
 
@@ -24,7 +24,10 @@ You can add attributes to a span:
 
 ```
 func DoWork(ctx context.Context) err error {
-	...
+	// ctx, span := trace.StartSpan(ctx, "<span.context>")
+	// or
+	// span := trace.FromContext(ctx)
+
 	span.AddAttributes(
 		trace.Attribute("app.record_id", "id"),
 	)
@@ -35,7 +38,10 @@ And you can add inheritable attributes to a span. They will be inherited by chil
 
 ```
 func DoWork(ctx context.Context) err error {
-	...
+	// ctx, span := trace.StartSpan(ctx, "<span.context>")
+	// or
+	// span := trace.FromContext(ctx)
+
 	span.AddInheritableAttributes(
 		trace.Attribute("family.name", "..."),
 	)

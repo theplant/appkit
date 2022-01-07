@@ -21,7 +21,7 @@ func BenchmarkTracing(b *testing.B) {
 		s.AddAttributes(
 			Attribute("key", "value"),
 		)
-		EndSpan(ctx, s, nil)
+		EndSpan(ctx, nil)
 	}
 }
 
@@ -46,7 +46,7 @@ func TestStartSpanWithoutParent(t *testing.T) {
 		t.Fatalf("parent span should be nil ")
 	}
 
-	sInCtx := fromContext(ctx)
+	sInCtx := FromContext(ctx)
 	if sInCtx == nil || sInCtx.spanID != s.spanID {
 		t.Fatalf("span should be in new ctx")
 	}
@@ -78,7 +78,7 @@ func TestStartSpanWithParent(t *testing.T) {
 		t.Fatalf("span should inherite specific attributes form parent")
 	}
 
-	sInCtx := fromContext(ctx)
+	sInCtx := FromContext(ctx)
 	if sInCtx == nil || sInCtx.spanID != secondLevelS.spanID {
 		t.Fatalf("span should be in new ctx")
 	}
@@ -90,7 +90,7 @@ func TestEndSpan(t *testing.T) {
 
 	err := errors.New("test error")
 
-	EndSpan(ctx, s, err)
+	EndSpan(ctx, err)
 
 	if s.err != err {
 		t.Fatalf("span should record the err")
@@ -125,8 +125,8 @@ func TestTrace(t *testing.T) {
 	t.SkipNow()
 
 	ctx := context.Background()
-	ctx, span := StartSpan(ctx, "top-level")
-	defer func() { EndSpan(ctx, span, nil) }()
+	ctx, _ = StartSpan(ctx, "top-level")
+	defer func() { EndSpan(ctx, nil) }()
 
 	ctx2, span2 := StartSpan(ctx, "second-level")
 	span2.AddAttributes(
@@ -137,12 +137,12 @@ func TestTrace(t *testing.T) {
 		Attribute("second-level-inheritable-shoul-be-override", "test"),
 	)
 	time.Sleep(2 * time.Second)
-	defer func() { EndSpan(ctx2, span2, nil) }()
+	defer func() { EndSpan(ctx2, nil) }()
 
 	ctx3, span3 := StartSpan(ctx2, "third-level")
 	span3.AddAttributes(
 		Attribute("second-level-inheritable-shoul-be-override", "override"),
 	)
 	time.Sleep(3 * time.Second)
-	defer func() { EndSpan(ctx3, span3, errors.New("third-level-failed")) }()
+	defer func() { EndSpan(ctx3, errors.New("third-level-failed")) }()
 }
