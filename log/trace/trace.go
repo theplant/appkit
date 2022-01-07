@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/theplant/appkit/log"
@@ -147,6 +148,8 @@ type span struct {
 
 	inheritableAttributes map[string]interface{}
 	attributes            map[string]interface{}
+
+	mu sync.Mutex
 }
 
 func (s *span) Duration() time.Duration {
@@ -157,6 +160,9 @@ func (s *span) Duration() time.Duration {
 }
 
 func (s *span) AddInheritableAttributes(attributes ...attribute) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if s.inheritableAttributes == nil {
 		s.inheritableAttributes = make(map[string]interface{})
 	}
@@ -166,6 +172,9 @@ func (s *span) AddInheritableAttributes(attributes ...attribute) {
 }
 
 func (s *span) AddAttributes(attributes ...attribute) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if s.attributes == nil {
 		s.attributes = make(map[string]interface{})
 	}
@@ -179,6 +188,10 @@ func (s *span) recordError(err error) {
 }
 
 func (s *span) end() {
+	if s.endTime != nil {
+		return
+	}
+
 	endTime := time.Now()
 	s.endTime = &endTime
 }
