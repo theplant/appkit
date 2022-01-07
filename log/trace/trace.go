@@ -12,19 +12,32 @@ import (
 	"github.com/theplant/appkit/log"
 )
 
-var _defaultIDGenerator = defaultIDGenerator()
+var _idGenerator IDGenerator
+
+func GetIDGenerator() IDGenerator {
+	if _idGenerator == nil {
+		_idGenerator = defaultIDGenerator()
+	}
+	return _idGenerator
+}
+
+func SetIDGenerator(idGenerator IDGenerator) {
+	_idGenerator = idGenerator
+}
 
 func StartSpan(ctx context.Context, name string) (context.Context, *span) {
 	var (
+		idGenerator = GetIDGenerator()
+
 		parent  = FromContext(ctx)
 		traceID TraceID
-		spanID  = _defaultIDGenerator.NewSpanID()
+		spanID  = idGenerator.NewSpanID()
 
 		inheritableAttributes map[string]interface{}
 	)
 
 	if parent == nil {
-		traceID = _defaultIDGenerator.NewTraceID()
+		traceID = idGenerator.NewTraceID()
 	} else {
 		traceID = parent.traceID
 		if len(parent.inheritableAttributes) > 0 {
