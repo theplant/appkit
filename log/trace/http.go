@@ -11,14 +11,14 @@ type TracedTransport struct {
 }
 
 func (tr *TracedTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	return TraceHttpRequest(tr.RoundTripper.RoundTrip, tr.BaseName, req)
+	return TraceHTTPRequest(tr.RoundTripper.RoundTrip, tr.BaseName, req)
 }
 
 func httpRequestName(base string, req *http.Request) string {
 	return fmt.Sprintf("%s.call(%s)", base, req.URL.Path)
 }
 
-func TraceHttpRequest(do func(*http.Request) (*http.Response, error), baseName string, req *http.Request) (resp *http.Response, err error) {
+func TraceHTTPRequest(do func(*http.Request) (*http.Response, error), baseName string, req *http.Request) (resp *http.Response, err error) {
 	ctx, _ := StartSpan(req.Context(), httpRequestName(baseName, req))
 	defer func() { EndSpan(ctx, err) }()
 	AppendKVs(
