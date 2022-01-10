@@ -14,12 +14,12 @@ func BenchmarkTracing(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		ctx, s := StartSpan(ctx, "test")
-		s.AddInheritableAttributes(
-			Attribute("type", "test"),
+		ctx, _ := StartSpan(ctx, "test")
+		AppendInheritableKVs(ctx,
+			"type", "test",
 		)
-		s.AddAttributes(
-			Attribute("key", "value"),
+		AppendKVs(ctx,
+			"key", "value",
 		)
 		EndSpan(ctx, nil)
 	}
@@ -84,6 +84,36 @@ func TestStartSpanWithParent(t *testing.T) {
 	}
 }
 
+func TestAppendInheritableKVs(t *testing.T) {
+	ctx := context.Background()
+	ctx, s := StartSpan(ctx, "test")
+
+	AppendInheritableKVs(ctx, "test_key", "test_value")
+	if s.inheritableAttributes["test_key"] != "test_value" {
+		t.Fatalf("inheritable attribute should be added")
+	}
+
+	AppendInheritableKVs(ctx, "test_missing_value")
+	if s.inheritableAttributes["test_missing_value"] != ErrMissingValue {
+		t.Fatalf("inheritable attribute should be ErrMissingValue")
+	}
+}
+
+func TestAppendKVs(t *testing.T) {
+	ctx := context.Background()
+	ctx, s := StartSpan(ctx, "test")
+
+	AppendKVs(ctx, "test_key", "test_value")
+	if s.attributes["test_key"] != "test_value" {
+		t.Fatalf("attribute should be added")
+	}
+
+	AppendKVs(ctx, "test_missing_value")
+	if s.attributes["test_missing_value"] != ErrMissingValue {
+		t.Fatalf("attribute should be ErrMissingValue")
+	}
+}
+
 func TestEndSpan(t *testing.T) {
 	ctx := context.Background()
 	ctx, s := StartSpan(ctx, "test")
@@ -103,7 +133,7 @@ func TestEndSpan(t *testing.T) {
 	}
 }
 
-func TestInherableAttributes(t *testing.T) {
+func TestAddInherableAttributes(t *testing.T) {
 	s := span{}
 	s.AddInheritableAttributes(Attribute("test_key", "test_value"))
 	if s.inheritableAttributes["test_key"] != "test_value" {

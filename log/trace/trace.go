@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -63,14 +64,48 @@ func StartSpan(ctx context.Context, name string) (context.Context, *span) {
 	return newContext(ctx, &s), &s
 }
 
+var ErrMissingValue = errors.New("(MISSING)")
+
+func AppendInheritableKVs(ctx context.Context, keysvals ...interface{}) {
+	if len(keysvals)%2 != 0 {
+		log.ForceContext(ctx).Warn().Log("msg", fmt.Sprintf("missing key or value for span attributes: %q", keysvals))
+		keysvals = append(keysvals, ErrMissingValue)
+	}
+
+	s := FromContext(ctx)
+	if s == nil {
+		return
+	}
+
+	for i := 0; i < len(keysvals); i += 2 {
+		s.AddInheritableAttributes(Attribute(fmt.Sprint(keysvals[i]), keysvals[i+1]))
+	}
+}
+
+func AppendKVs(ctx context.Context, keysvals ...interface{}) {
+	if len(keysvals)%2 != 0 {
+		log.ForceContext(ctx).Warn().Log("msg", fmt.Sprintf("missing key or value for span attributes: %q", keysvals))
+		keysvals = append(keysvals, ErrMissingValue)
+	}
+
+	s := FromContext(ctx)
+	if s == nil {
+		return
+	}
+
+	for i := 0; i < len(keysvals); i += 2 {
+		s.AddAttributes(Attribute(fmt.Sprint(keysvals[i]), keysvals[i+1]))
+	}
+}
+
 func EndSpan(ctx context.Context, err error) {
 	s := FromContext(ctx)
 	if s == nil {
 		return
 	}
 
-	s.recordError(err)
-	s.end()
+	s.RecordError(err)
+	s.End()
 	logSpan(ctx, s)
 }
 
@@ -200,11 +235,11 @@ func (s *span) AddAttributes(attributes ...attribute) {
 	}
 }
 
-func (s *span) recordError(err error) {
+func (s *span) RecordError(err error) {
 	s.err = err
 }
 
-func (s *span) end() {
+func (s *span) End() {
 	if !s.endTime.IsZero() {
 		return
 	}

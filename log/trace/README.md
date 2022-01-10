@@ -40,6 +40,18 @@ func DoWork(ctx context.Context) err error {
 }
 ```
 
+or you can use the helper `AppendKVs`:
+
+```
+func DoWork(ctx context.Context) err error {
+	...
+
+	trace.AppendKVs(ctx,
+		"app.record_id", "id",
+	)
+}
+```
+
 And you can add inheritable attributes to a span. They will be inherited by child spans and printed into logs :
 
 ```
@@ -50,6 +62,18 @@ func DoWork(ctx context.Context) err error {
 
 	span.AddInheritableAttributes(
 		trace.Attribute("family.name", "..."),
+	)
+}
+```
+
+or you can use the helper `AppendInheritableKVs`:
+
+```
+func DoWork(ctx context.Context) err error {
+	...
+
+	trace.AppendInheritableKVs(ctx,
+		"family.name", "...",
 	)
 }
 ```
