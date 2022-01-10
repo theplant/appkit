@@ -129,9 +129,6 @@ func logSpan(ctx context.Context, s *span) {
 	}
 
 	for k, v := range s.inheritableAttributes {
-		if _, ok := s.attributes[k]; ok {
-			continue
-		}
 		keysvals = append(keysvals, k, v)
 	}
 	for k, v := range s.attributes {
