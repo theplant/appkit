@@ -1,16 +1,16 @@
-package trace
+package logtracing
 
 import (
 	"fmt"
 	"net/http"
 )
 
-type TracedTransport struct {
+type HTTPTransport struct {
 	BaseName     string
 	RoundTripper http.RoundTripper
 }
 
-func (tr *TracedTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+func (tr *HTTPTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	return TraceHTTPRequest(tr.RoundTripper.RoundTrip, tr.BaseName, req)
 }
 
