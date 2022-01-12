@@ -10,11 +10,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// UnaryClientInterceptor returns a new unary client interceptor that optionally logs the execution of external gRPC calls.
 func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, fullMethod string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
 		service, method := parseGRPCFullMethod(fullMethod)
-		ctx, _ = StartSpan(ctx, grpcCallName(service, method))
+		ctx, _ = StartSpan(ctx, grpcClientRequestName(service, method))
 		defer func() {
 			AppendKVs(ctx, "grpc.code", status.Code(err).String())
 			EndSpan(ctx, err)
@@ -25,11 +24,10 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 	}
 }
 
-// StreamClientInterceptor returns a new streaming client interceptor that optionally logs the execution of external gRPC calls.
 func StreamClientInterceptor() grpc.StreamClientInterceptor {
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, fullMethod string, streamer grpc.Streamer, opts ...grpc.CallOption) (cs grpc.ClientStream, err error) {
 		service, method := parseGRPCFullMethod(fullMethod)
-		ctx, _ = StartSpan(ctx, grpcCallName(service, method))
+		ctx, _ = StartSpan(ctx, grpcClientRequestName(service, method))
 		defer func() {
 			AppendKVs(ctx, "grpc.code", status.Code(err).String())
 			EndSpan(ctx, err)
@@ -49,14 +47,14 @@ func GRPCClientKVs(service, method string) []interface{} {
 	}
 }
 
-func grpcCallName(service, method string) string {
+func grpcClientRequestName(service, method string) string {
 	return fmt.Sprintf("%s.call(%s)", service, method)
 }
 
 func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 		service, method := parseGRPCFullMethod(info.FullMethod)
-		ctx, _ = StartSpan(ctx, grpcServeName(service, method))
+		ctx, _ = StartSpan(ctx, grpcServerRequestName(service, method))
 		defer func() {
 			AppendKVs(ctx, "grpc.code", status.Code(err).String())
 			EndSpan(ctx, err)
@@ -70,7 +68,7 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 func StreamServerInterceptor() grpc.StreamServerInterceptor {
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 		service, method := parseGRPCFullMethod(info.FullMethod)
-		ctx, _ := StartSpan(stream.Context(), grpcServeName(service, method))
+		ctx, _ := StartSpan(stream.Context(), grpcServerRequestName(service, method))
 		defer func() {
 			AppendKVs(ctx, "grpc.code", status.Code(err).String())
 			EndSpan(ctx, err)
@@ -84,6 +82,10 @@ func StreamServerInterceptor() grpc.StreamServerInterceptor {
 	}
 }
 
+func grpcServerRequestName(service, method string) string {
+	return fmt.Sprintf("%s.serve(%s)", service, method)
+}
+
 func GRPCServerKVs(service, method string) []interface{} {
 	return []interface{}{
 		"span.type", "grpc",
@@ -91,10 +93,6 @@ func GRPCServerKVs(service, method string) []interface{} {
 		"grpc.service", service,
 		"grpc.method", method,
 	}
-}
-
-func grpcServeName(service, method string) string {
-	return fmt.Sprintf("%s.serve(%s)", service, method)
 }
 
 func parseGRPCFullMethod(fullMethodString string) (service, method string) {
