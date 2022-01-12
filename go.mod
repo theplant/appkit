@@ -9,12 +9,11 @@ require (
 	github.com/caio/go-tdigest v2.3.0+incompatible // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/go-kit/kit v0.9.0
-	github.com/go-logfmt/logfmt v0.3.0 // indirect
-	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
 	github.com/golang/protobuf v1.4.3
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/sessions v1.2.0
+	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/vault/api v1.0.4
 	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e

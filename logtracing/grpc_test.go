@@ -36,7 +36,14 @@ func bufDialer(context.Context, string) (net.Conn, error) {
 
 func startGreeterServer() {
 	lis = bufconn.Listen(bufSize)
-	_grpcServer = grpc.NewServer()
+	_grpcServer = grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			UnaryServerInterceptor(),
+		),
+		grpc.ChainStreamInterceptor(
+			StreamServerInterceptor(),
+		),
+	)
 	greeter.RegisterGreeterServer(_grpcServer, &greeterServer{})
 	go func() {
 		if err := _grpcServer.Serve(lis); err != nil {
