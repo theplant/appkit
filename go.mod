@@ -12,6 +12,7 @@ require (
 	github.com/go-logfmt/logfmt v0.3.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
+	github.com/golang/protobuf v1.4.3
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/sessions v1.2.0
 	github.com/hashicorp/go-multierror v1.0.0
@@ -33,7 +34,9 @@ require (
 	github.com/uber/jaeger-client-go v2.29.1+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	golang.org/x/crypto v0.0.0-20191205180655-e7c4368fe9dd
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
 	golang.org/x/sys v0.0.0-20210510120138-977fb7262007 // indirect
+	google.golang.org/grpc v1.43.0
+	google.golang.org/protobuf v1.25.0
 )
