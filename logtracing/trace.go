@@ -15,10 +15,11 @@ import (
 
 var _idGenerator IDGenerator
 
+func init() {
+	_idGenerator = defaultIDGenerator()
+}
+
 func GetIDGenerator() IDGenerator {
-	if _idGenerator == nil {
-		_idGenerator = defaultIDGenerator()
-	}
 	return _idGenerator
 }
 
