@@ -10,6 +10,15 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+func GRPCClientKVs(service, method string) []interface{} {
+	return []interface{}{
+		"span.type", "grpc",
+		"span.role", "client",
+		"grpc.service", service,
+		"grpc.method", method,
+	}
+}
+
 func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, fullMethod string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
 		service, method := parseGRPCFullMethod(fullMethod)
@@ -38,17 +47,17 @@ func StreamClientInterceptor() grpc.StreamClientInterceptor {
 	}
 }
 
-func GRPCClientKVs(service, method string) []interface{} {
+func grpcClientRequestName(service, method string) string {
+	return fmt.Sprintf("%s.call(%s)", service, method)
+}
+
+func GRPCServerKVs(service, method string) []interface{} {
 	return []interface{}{
 		"span.type", "grpc",
-		"span.role", "client",
+		"span.role", "server",
 		"grpc.service", service,
 		"grpc.method", method,
 	}
-}
-
-func grpcClientRequestName(service, method string) string {
-	return fmt.Sprintf("%s.call(%s)", service, method)
 }
 
 func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
@@ -84,15 +93,6 @@ func StreamServerInterceptor() grpc.StreamServerInterceptor {
 
 func grpcServerRequestName(service, method string) string {
 	return fmt.Sprintf("%s.serve(%s)", service, method)
-}
-
-func GRPCServerKVs(service, method string) []interface{} {
-	return []interface{}{
-		"span.type", "grpc",
-		"span.role", "server",
-		"grpc.service", service,
-		"grpc.method", method,
-	}
 }
 
 func parseGRPCFullMethod(fullMethodString string) (service, method string) {

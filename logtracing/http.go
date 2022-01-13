@@ -5,13 +5,13 @@ import (
 	"net/http"
 )
 
-type HTTPTransport struct {
-	BaseName     string
-	RoundTripper http.RoundTripper
-}
-
-func (tr *HTTPTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	return TraceHTTPRequest(tr.RoundTripper.RoundTrip, tr.BaseName, req)
+func HTTPClientKVs(req *http.Request) []interface{} {
+	return []interface{}{
+		"span.type", "http",
+		"span.role", "client",
+		"http.url", req.URL.String(),
+		"http.method", req.Method,
+	}
 }
 
 func TraceHTTPRequest(do func(*http.Request) (*http.Response, error), baseName string, req *http.Request) (resp *http.Response, err error) {
@@ -33,13 +33,13 @@ func httpClientRequestName(base string, req *http.Request) string {
 	return fmt.Sprintf("%s.call(%s)", base, req.URL.Path)
 }
 
-func HTTPClientKVs(req *http.Request) []interface{} {
-	return []interface{}{
-		"span.type", "http",
-		"span.role", "client",
-		"http.url", req.URL.String(),
-		"http.method", req.Method,
-	}
+type HTTPTransport struct {
+	BaseName     string
+	RoundTripper http.RoundTripper
+}
+
+func (tr *HTTPTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	return TraceHTTPRequest(tr.RoundTripper.RoundTrip, tr.BaseName, req)
 }
 
 // TODO: add a middleware to trace http requests
