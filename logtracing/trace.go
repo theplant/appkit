@@ -144,16 +144,6 @@ func logSpan(ctx context.Context, s *span) {
 			"span.with_err", 1,
 		)
 		l.Error().Log(keysvals...)
-	} else if r := recover(); r != nil {
-		keysvals = append(keysvals,
-			"msg", fmt.Sprintf("%s (%v) -> panic: %s (%T)", s.spanContext, dur, r, r),
-			"span.err", r,
-			"span.panic", 1,
-			"span.err_type", errType(s.err),
-			"span.with_err", 1,
-		)
-		l.Error().Log(keysvals...)
-		panic(r)
 	} else {
 		keysvals = append(keysvals,
 			"msg", fmt.Sprintf("%s (%v) -> success", s.spanContext, dur),
