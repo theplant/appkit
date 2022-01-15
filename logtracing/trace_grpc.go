@@ -24,10 +24,10 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 		service, method := parseGRPCFullMethod(fullMethod)
 		ctx, _ = StartSpan(ctx, grpcClientRequestName(service, method))
 		defer func() {
-			AppendKVs(ctx, "grpc.code", status.Code(err).String())
+			AppendSpanKVs(ctx, "grpc.code", status.Code(err).String())
 			EndSpan(ctx, err)
 		}()
-		AppendKVs(ctx, GRPCClientKVs(service, method)...)
+		AppendSpanKVs(ctx, GRPCClientKVs(service, method)...)
 
 		return invoker(ctx, fullMethod, req, reply, cc, opts...)
 	}
@@ -38,10 +38,10 @@ func StreamClientInterceptor() grpc.StreamClientInterceptor {
 		service, method := parseGRPCFullMethod(fullMethod)
 		ctx, _ = StartSpan(ctx, grpcClientRequestName(service, method))
 		defer func() {
-			AppendKVs(ctx, "grpc.code", status.Code(err).String())
+			AppendSpanKVs(ctx, "grpc.code", status.Code(err).String())
 			EndSpan(ctx, err)
 		}()
-		AppendKVs(ctx, GRPCClientKVs(service, method)...)
+		AppendSpanKVs(ctx, GRPCClientKVs(service, method)...)
 
 		return streamer(ctx, desc, cc, fullMethod, opts...)
 	}
@@ -65,10 +65,10 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 		service, method := parseGRPCFullMethod(info.FullMethod)
 		ctx, _ = StartSpan(ctx, grpcServerRequestName(service, method))
 		defer func() {
-			AppendKVs(ctx, "grpc.code", status.Code(err).String())
+			AppendSpanKVs(ctx, "grpc.code", status.Code(err).String())
 			EndSpan(ctx, err)
 		}()
-		AppendKVs(ctx, GRPCServerKVs(service, method)...)
+		AppendSpanKVs(ctx, GRPCServerKVs(service, method)...)
 
 		return handler(ctx, req)
 	}
@@ -79,10 +79,10 @@ func StreamServerInterceptor() grpc.StreamServerInterceptor {
 		service, method := parseGRPCFullMethod(info.FullMethod)
 		ctx, _ := StartSpan(stream.Context(), grpcServerRequestName(service, method))
 		defer func() {
-			AppendKVs(ctx, "grpc.code", status.Code(err).String())
+			AppendSpanKVs(ctx, "grpc.code", status.Code(err).String())
 			EndSpan(ctx, err)
 		}()
-		AppendKVs(ctx, GRPCClientKVs(service, method)...)
+		AppendSpanKVs(ctx, GRPCClientKVs(service, method)...)
 
 		wrapped := grpc_middleware.WrapServerStream(stream)
 		wrapped.WrappedContext = ctx

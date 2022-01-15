@@ -1,6 +1,6 @@
 # Trace
 
-This package provides interfaces for tracing functions and printing traces into logs.
+This package provides APIs for tracing functions and printing traces into logs.
 
 ## Usage
 
@@ -19,73 +19,42 @@ func DoWork(ctx context.Context) err error {
 }
 ```
 
-It will do these things:
+It will trace the function, record the error, and finally log the span with the logger in context.
 
-Start a span when the function is executed
-End the span when the process completed
-Record the error which the function returns
-Log span with the logger in context
-
-You can add attributes to a span:
+You can append key-values to an active span:
 
 ```
 func DoWork(ctx context.Context) err error {
-	// ctx, span := logtracing.StartSpan(ctx, "<span.context>")
-	// or
-	// span := logtracing.FromContext(ctx)
+	ctx, _ := logtracing.StartSpan(ctx, "<span.context>")
+	logtracing.AppendSpanKVs(ctx,
+		"service", "greeter",
+	)
 
-	span.AddAttributes(
-		logtracing.Attribute("app.record_id", "id"),
+	// or get the active span from context
+
+	span := logtracing.SpanFromContext(ctx)
+	span.AppendKVs(
+		"service", "greeter",
 	)
 }
 ```
 
-or you can use the helper `AppendKVs`:
+If you want to append key-values to all spans, you can append the key-values to the context with `ContextWithKVs`:
 
 ```
 func DoWork(ctx context.Context) err error {
-	...
-
-	logtracing.AppendKVs(ctx,
-		"app.record_id", "id",
-	)
+	// all the spans within this context will contain `"key": "value"`
+	ctx = logtracing.ContextWithKVs(ctx, "key", "value")
+	ctx, _ = logtracing.StartSpan(ctx, "test")
 }
 ```
 
-And you can add inheritable attributes to a span. They will be inherited by child spans and printed into logs :
+## Guidence
 
-```
-func DoWork(ctx context.Context) err error {
-	// ctx, span := logtracing.StartSpan(ctx, "<span.context>")
-	// or
-	// span := logtracing.FromContext(ctx)
+### XMLRPC
 
-	span.AddInheritableAttributes(
-		logtracing.Attribute("family.name", "..."),
-	)
-}
-```
+### GRPC
 
-or you can use the helper `AppendInheritableKVs`:
+### HTTP
 
-```
-func DoWork(ctx context.Context) err error {
-	...
-
-	logtracing.AppendInheritableKVs(ctx,
-		"family.name", "...",
-	)
-}
-```
-
-## Guide(TODO)
-
-Trace
-- Entry points
-	- `type`
-	- `role`
-- Calls out
-	- `type`: `db`, `gcp.fcm`
-	- `role`
-Internal functions
-	- `type`: `internal`
+### Function

@@ -10,7 +10,7 @@ func TestTraceFunc(t *testing.T) {
 	var s *span
 	var testErr = errors.New("test error")
 	fn := func(ctx context.Context) error {
-		s = FromContext(ctx)
+		s = SpanFromContext(ctx)
 
 		return testErr
 	}

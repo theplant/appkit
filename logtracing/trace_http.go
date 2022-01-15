@@ -17,12 +17,12 @@ func HTTPClientKVs(req *http.Request) []interface{} {
 func TraceHTTPRequest(do func(*http.Request) (*http.Response, error), baseName string, req *http.Request) (resp *http.Response, err error) {
 	ctx, _ := StartSpan(req.Context(), httpClientRequestName(baseName, req))
 	defer func() { EndSpan(ctx, err) }()
-	AppendKVs(ctx,
+	AppendSpanKVs(ctx,
 		HTTPClientKVs(req)...,
 	)
 	resp, err = do(req)
 	if err == nil {
-		AppendKVs(ctx,
+		AppendSpanKVs(ctx,
 			"http.status", resp.Status,
 		)
 	}

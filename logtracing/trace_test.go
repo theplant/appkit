@@ -11,14 +11,12 @@ import (
 
 func BenchmarkTracing(b *testing.B) {
 	ctx := log.Context(context.Background(), log.Default())
+	ctx = ContextWithKVs(ctx, "key", "value")
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		ctx, _ := StartSpan(ctx, "test")
-		AppendInheritableKVs(ctx,
-			"type", "test",
-		)
-		AppendKVs(ctx,
+		AppendSpanKVs(ctx,
 			"key", "value",
 		)
 		EndSpan(ctx, nil)
@@ -46,7 +44,7 @@ func TestStartSpanWithoutParent(t *testing.T) {
 		t.Fatalf("parent span should be nil ")
 	}
 
-	sInCtx := FromContext(ctx)
+	sInCtx := SpanFromContext(ctx)
 	if sInCtx == nil || sInCtx.spanID != s.spanID {
 		t.Fatalf("span should be in new ctx")
 	}
@@ -54,9 +52,8 @@ func TestStartSpanWithoutParent(t *testing.T) {
 
 func TestStartSpanWithParent(t *testing.T) {
 	ctx := context.Background()
-	ctx, topLevelS := StartSpan(ctx, "top-level")
-	topLevelS.AddInheritableAttributes(Attribute("family.name", "W"))
 
+	ctx, topLevelS := StartSpan(ctx, "top-level")
 	ctx, secondLevelS := StartSpan(ctx, "second-level")
 
 	if secondLevelS == nil {
@@ -74,43 +71,10 @@ func TestStartSpanWithParent(t *testing.T) {
 	if secondLevelS.parent != topLevelS {
 		t.Fatalf("parent span should be equal to parent")
 	}
-	if secondLevelS.inheritableAttributes["family.name"] != "W" {
-		t.Fatalf("span should inherite specific attributes form parent")
-	}
 
-	sInCtx := FromContext(ctx)
+	sInCtx := SpanFromContext(ctx)
 	if sInCtx == nil || sInCtx.spanID != secondLevelS.spanID {
 		t.Fatalf("span should be in new ctx")
-	}
-}
-
-func TestAppendInheritableKVs(t *testing.T) {
-	ctx := context.Background()
-	ctx, s := StartSpan(ctx, "test")
-
-	AppendInheritableKVs(ctx, "test_key", "test_value")
-	if s.inheritableAttributes["test_key"] != "test_value" {
-		t.Fatalf("inheritable attribute should be added")
-	}
-
-	AppendInheritableKVs(ctx, "test_missing_value")
-	if s.inheritableAttributes["test_missing_value"] != ErrMissingValue {
-		t.Fatalf("inheritable attribute should be ErrMissingValue")
-	}
-}
-
-func TestAppendKVs(t *testing.T) {
-	ctx := context.Background()
-	ctx, s := StartSpan(ctx, "test")
-
-	AppendKVs(ctx, "test_key", "test_value")
-	if s.attributes["test_key"] != "test_value" {
-		t.Fatalf("attribute should be added")
-	}
-
-	AppendKVs(ctx, "test_missing_value")
-	if s.attributes["test_missing_value"] != ErrMissingValue {
-		t.Fatalf("attribute should be ErrMissingValue")
 	}
 }
 
@@ -133,46 +97,22 @@ func TestEndSpan(t *testing.T) {
 	}
 }
 
-func TestAddInherableAttributes(t *testing.T) {
-	s := span{}
-	s.AddInheritableAttributes(Attribute("test_key", "test_value"))
-	if s.inheritableAttributes["test_key"] != "test_value" {
-		t.Fatalf("inheritable attribute should be added")
-	}
-}
-
-func TestAddAttributes(t *testing.T) {
-	s := span{}
-	s.AddAttributes(
-		Attribute("test_key", "test_value"),
-	)
-	if s.attributes["test_key"] != "test_value" {
-		t.Fatalf("attribute should be added")
-	}
-}
-
 func TestTrace(t *testing.T) {
-	t.SkipNow()
+	// t.SkipNow()
 
 	ctx := context.Background()
+	ctx = ContextWithKVs(ctx, "key", "value")
 	ctx, _ = StartSpan(ctx, "top-level")
 	defer func() { EndSpan(ctx, nil) }()
 
-	ctx2, span2 := StartSpan(ctx, "second-level")
-	span2.AddAttributes(
-		Attribute("second-level-only", "test"),
-	)
-	span2.AddInheritableAttributes(
-		Attribute("second-level-inheritable", "test"),
-		Attribute("second-level-inheritable-shoul-be-override", "test"),
-	)
+	ctx2 := ContextWithKVs(ctx, "key2", "value2")
+	ctx2, _ = StartSpan(ctx2, "second-level")
+	AppendSpanKVs(ctx2, "second-level-only", "test")
 	time.Sleep(2 * time.Second)
 	defer func() { EndSpan(ctx2, nil) }()
 
-	ctx3, span3 := StartSpan(ctx2, "third-level")
-	span3.AddAttributes(
-		Attribute("second-level-inheritable-shoul-be-override", "override"),
-	)
+	ctx3, _ := StartSpan(ctx2, "third-level")
+	AppendSpanKVs(ctx3, "third-level-only", "test")
 	time.Sleep(3 * time.Second)
 	defer func() { EndSpan(ctx3, errors.New("third-level-failed")) }()
 }

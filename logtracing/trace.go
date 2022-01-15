@@ -1,53 +1,63 @@
 package logtracing
 
 import (
-	"bytes"
 	"context"
-	"encoding/hex"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/theplant/appkit/log"
 )
 
-var _idGenerator IDGenerator
+type kvsContextKey struct{}
 
-func init() {
-	_idGenerator = defaultIDGenerator()
+var activeKVsKeys = kvsContextKey{}
+
+func KVsFromContext(ctx context.Context) []interface{} {
+	kvs, _ := ctx.Value(activeKVsKeys).([]interface{})
+	return kvs
 }
 
-func GetIDGenerator() IDGenerator {
-	return _idGenerator
+func ContextWithKVs(ctx context.Context, keyvals ...interface{}) context.Context {
+	if len(keyvals)%2 != 0 {
+		log.ForceContext(ctx).Warn().Log("msg", fmt.Sprintf("missing key or value for span attributes: %q", keyvals))
+	}
+
+	exisiting := KVsFromContext(ctx)
+	if exisiting != nil {
+		copy := append([]interface{}{}, exisiting...)
+		keyvals = append(copy, keyvals...)
+	}
+
+	ctx = context.WithValue(ctx, activeKVsKeys, keyvals)
+	return ctx
 }
 
-func SetIDGenerator(idGenerator IDGenerator) {
-	_idGenerator = idGenerator
+type spanContextKey struct{}
+
+var activeSpanKey = spanContextKey{}
+
+func SpanFromContext(ctx context.Context) *span {
+	s, _ := ctx.Value(activeSpanKey).(*span)
+	return s
+}
+
+func contextWithSpan(parent context.Context, s *span) context.Context {
+	return context.WithValue(parent, activeSpanKey, s)
 }
 
 func StartSpan(ctx context.Context, name string) (context.Context, *span) {
 	var (
 		idGenerator = GetIDGenerator()
 
-		parent  = FromContext(ctx)
+		parent  = SpanFromContext(ctx)
 		traceID TraceID
 		spanID  = idGenerator.NewSpanID()
-
-		inheritableAttributes map[string]interface{}
 	)
 
 	if parent == nil {
 		traceID = idGenerator.NewTraceID()
 	} else {
 		traceID = parent.traceID
-		if len(parent.inheritableAttributes) > 0 {
-			inheritableAttributes = make(map[string]interface{})
-			for k, v := range parent.inheritableAttributes {
-				inheritableAttributes[k] = v
-			}
-		}
 	}
 
 	s := span{
@@ -58,49 +68,31 @@ func StartSpan(ctx context.Context, name string) (context.Context, *span) {
 		spanContext: name,
 
 		startTime: time.Now(),
-
-		inheritableAttributes: inheritableAttributes,
 	}
 
-	return newContext(ctx, &s), &s
+	ctxKVs := KVsFromContext(ctx)
+	if ctxKVs != nil {
+		s.AppendKVs(ctxKVs...)
+	}
+
+	return contextWithSpan(ctx, &s), &s
 }
 
-var ErrMissingValue = errors.New("(MISSING)")
-
-func AppendInheritableKVs(ctx context.Context, keysvals ...interface{}) {
-	if len(keysvals)%2 != 0 {
-		log.ForceContext(ctx).Warn().Log("msg", fmt.Sprintf("missing key or value for span attributes: %q", keysvals))
-		keysvals = append(keysvals, ErrMissingValue)
+func AppendSpanKVs(ctx context.Context, keyvals ...interface{}) {
+	if len(keyvals)%2 != 0 {
+		log.ForceContext(ctx).Warn().Log("msg", fmt.Sprintf("missing key or value for span attributes: %q", keyvals))
 	}
 
-	s := FromContext(ctx)
+	s := SpanFromContext(ctx)
 	if s == nil {
 		return
 	}
 
-	for i := 0; i < len(keysvals); i += 2 {
-		s.AddInheritableAttributes(Attribute(fmt.Sprint(keysvals[i]), keysvals[i+1]))
-	}
-}
-
-func AppendKVs(ctx context.Context, keysvals ...interface{}) {
-	if len(keysvals)%2 != 0 {
-		log.ForceContext(ctx).Warn().Log("msg", fmt.Sprintf("missing key or value for span attributes: %q", keysvals))
-		keysvals = append(keysvals, ErrMissingValue)
-	}
-
-	s := FromContext(ctx)
-	if s == nil {
-		return
-	}
-
-	for i := 0; i < len(keysvals); i += 2 {
-		s.AddAttributes(Attribute(fmt.Sprint(keysvals[i]), keysvals[i+1]))
-	}
+	s.AppendKVs(keyvals...)
 }
 
 func EndSpan(ctx context.Context, err error) {
-	s := FromContext(ctx)
+	s := SpanFromContext(ctx)
 	if s == nil {
 		return
 	}
@@ -112,12 +104,12 @@ func EndSpan(ctx context.Context, err error) {
 
 func logSpan(ctx context.Context, s *span) {
 	var (
-		l        = log.ForceContext(ctx)
-		keysvals []interface{}
-		dur      = s.Duration()
+		l       = log.ForceContext(ctx)
+		keyvals []interface{}
+		dur     = s.Duration()
 	)
 
-	keysvals = append(keysvals,
+	keyvals = append(keyvals,
 		"ts", s.startTime.Format(time.RFC3339Nano),
 		"trace.id", s.traceID,
 		"span.id", s.spanID,
@@ -126,29 +118,24 @@ func logSpan(ctx context.Context, s *span) {
 	)
 
 	if s.parent != nil {
-		keysvals = append(keysvals, "span.parent_id", s.parent.spanID)
+		keyvals = append(keyvals, "span.parent_id", s.parent.spanID)
 	}
 
-	for k, v := range s.inheritableAttributes {
-		keysvals = append(keysvals, k, v)
-	}
-	for k, v := range s.attributes {
-		keysvals = append(keysvals, k, v)
-	}
+	keyvals = append(keyvals, s.keyvals...)
 
 	if s.err != nil {
-		keysvals = append(keysvals,
+		keyvals = append(keyvals,
 			"msg", fmt.Sprintf("%s (%v) -> %s (%T)", s.spanContext, dur, s.err, s.err),
 			"span.err", s.err,
 			"span.err_type", errType(s.err),
 			"span.with_err", 1,
 		)
-		l.Error().Log(keysvals...)
+		l.Error().Log(keyvals...)
 	} else {
-		keysvals = append(keysvals,
+		keyvals = append(keyvals,
 			"msg", fmt.Sprintf("%s (%v) -> success", s.spanContext, dur),
 		)
-		l.Info().Log(keysvals...)
+		l.Info().Log(keyvals...)
 	}
 }
 
@@ -161,142 +148,4 @@ func errType(err interface{}) string {
 		return fmt.Sprintf("%T (%T)", c.Cause(), err)
 	}
 	return fmt.Sprintf("%T", err)
-}
-
-type contextKey struct{}
-
-func FromContext(ctx context.Context) *span {
-	s, _ := ctx.Value(contextKey{}).(*span)
-	return s
-}
-
-func newContext(parent context.Context, s *span) context.Context {
-	return context.WithValue(parent, contextKey{}, s)
-}
-
-type span struct {
-	parent *span
-
-	traceID     TraceID
-	spanID      SpanID
-	spanContext string
-
-	startTime time.Time
-	endTime   time.Time
-
-	err error
-
-	inheritableAttributes map[string]interface{}
-	attributes            map[string]interface{}
-
-	mu sync.Mutex
-}
-
-func (s *span) Duration() time.Duration {
-	if s.endTime.IsZero() {
-		return 0
-	}
-	return s.endTime.Sub(s.startTime)
-}
-
-func (s *span) AddInheritableAttributes(attributes ...attribute) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.inheritableAttributes == nil {
-		s.inheritableAttributes = make(map[string]interface{})
-	}
-	for _, attr := range attributes {
-		s.inheritableAttributes[attr.key] = attr.value
-	}
-}
-
-func (s *span) AddAttributes(attributes ...attribute) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.attributes == nil {
-		s.attributes = make(map[string]interface{})
-	}
-	for _, attr := range attributes {
-		s.attributes[attr.key] = attr.value
-	}
-}
-
-func (s *span) RecordError(err error) {
-	s.err = err
-}
-
-func (s *span) End() {
-	if !s.endTime.IsZero() {
-		return
-	}
-
-	s.endTime = time.Now()
-}
-
-// TraceID is a unique identity of a trace.
-// nolint:revive // revive complains about stutter of `trace.TraceID`.
-type TraceID [16]byte
-
-var nilTraceID TraceID
-var _ json.Marshaler = nilTraceID
-
-// IsValid checks whether the trace TraceID is valid. A valid trace ID does
-// not consist of zeros only.
-func (t TraceID) IsValid() bool {
-	return !bytes.Equal(t[:], nilTraceID[:])
-}
-
-// MarshalJSON implements a custom marshal function to encode TraceID
-// as a hex string.
-func (t TraceID) MarshalJSON() ([]byte, error) {
-	return json.Marshal(t.String())
-}
-
-// String returns the hex string representation form of a TraceID
-func (t TraceID) String() string {
-	return hex.EncodeToString(t[:])
-}
-
-// SpanID is a unique identity of a span in a trace.
-type SpanID [8]byte
-
-var nilSpanID SpanID
-var _ json.Marshaler = nilSpanID
-
-// IsValid checks whether the SpanID is valid. A valid SpanID does not consist
-// of zeros only.
-func (s SpanID) IsValid() bool {
-	return !bytes.Equal(s[:], nilSpanID[:])
-}
-
-// MarshalJSON implements a custom marshal function to encode SpanID
-// as a hex string.
-func (s SpanID) MarshalJSON() ([]byte, error) {
-	return json.Marshal(s.String())
-}
-
-// String returns the hex string representation form of a SpanID
-func (s SpanID) String() string {
-	return hex.EncodeToString(s[:])
-}
-
-func Attribute(key string, value interface{}) attribute {
-	return attribute{key: key, value: value}
-}
-
-type attribute struct {
-	key   string
-	value interface{}
-}
-
-// Key returns the attribute's key
-func (a *attribute) Key() string {
-	return a.key
-}
-
-// Value returns the attribute's value
-func (a *attribute) Value() interface{} {
-	return a.value
 }
