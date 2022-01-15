@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/theplant/appkit/log"
 )
@@ -98,21 +97,27 @@ func TestEndSpan(t *testing.T) {
 }
 
 func TestTrace(t *testing.T) {
-	// t.SkipNow()
 
 	ctx := context.Background()
 	ctx = ContextWithKVs(ctx, "key", "value")
-	ctx, _ = StartSpan(ctx, "top-level")
+	ctx, span := StartSpan(ctx, "top-level")
 	defer func() { EndSpan(ctx, nil) }()
+	if len(span.keyvals) != 2 {
+		t.Fatalf("span should have 2 keyvals, but got %v", len(span.keyvals))
+	}
 
 	ctx2 := ContextWithKVs(ctx, "key2", "value2")
-	ctx2, _ = StartSpan(ctx2, "second-level")
+	ctx2, span2 := StartSpan(ctx2, "second-level")
 	AppendSpanKVs(ctx2, "second-level-only", "test")
-	time.Sleep(2 * time.Second)
 	defer func() { EndSpan(ctx2, nil) }()
+	if len(span2.keyvals) != 6 {
+		t.Fatalf("span should have 6 keyvals, but got %v", len(span2.keyvals))
+	}
 
-	ctx3, _ := StartSpan(ctx2, "third-level")
+	ctx3, span3 := StartSpan(ctx2, "third-level")
 	AppendSpanKVs(ctx3, "third-level-only", "test")
-	time.Sleep(3 * time.Second)
 	defer func() { EndSpan(ctx3, errors.New("third-level-failed")) }()
+	if len(span3.keyvals) != 6 {
+		t.Fatalf("span should have 6 keyvals, but got %v", len(span3.keyvals))
+	}
 }
