@@ -99,10 +99,10 @@ func EndSpan(ctx context.Context, err error) {
 
 	s.RecordError(err)
 	s.End()
-	logSpan(ctx, s)
+	LogSpan(ctx, s)
 }
 
-func logSpan(ctx context.Context, s *span) {
+func LogSpan(ctx context.Context, s *span) {
 	var (
 		l       = log.ForceContext(ctx)
 		keyvals []interface{}
@@ -123,6 +123,17 @@ func logSpan(ctx context.Context, s *span) {
 
 	keyvals = append(keyvals, s.keyvals...)
 
+	if s.panic != nil {
+		keyvals = append(keyvals,
+			"msg", fmt.Sprintf("%s (%v) -> panic: %s (%T)", s.spanContext, dur, s.err, s.err),
+			"span.panic", s.panic,
+			"span.panic_type", errType(s.err),
+			"span.with_panic", 1,
+		)
+		l.Crit().Log(keyvals...)
+		return
+	}
+
 	if s.err != nil {
 		keyvals = append(keyvals,
 			"msg", fmt.Sprintf("%s (%v) -> %s (%T)", s.spanContext, dur, s.err, s.err),
@@ -131,12 +142,13 @@ func logSpan(ctx context.Context, s *span) {
 			"span.with_err", 1,
 		)
 		l.Error().Log(keyvals...)
-	} else {
-		keyvals = append(keyvals,
-			"msg", fmt.Sprintf("%s (%v) -> success", s.spanContext, dur),
-		)
-		l.Info().Log(keyvals...)
+		return
 	}
+
+	keyvals = append(keyvals,
+		"msg", fmt.Sprintf("%s (%v) -> success", s.spanContext, dur),
+	)
+	l.Info().Log(keyvals...)
 }
 
 type causer interface {

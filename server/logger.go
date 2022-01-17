@@ -12,7 +12,60 @@ import (
 
 	"github.com/theplant/appkit/contexts"
 	"github.com/theplant/appkit/log"
+	"github.com/theplant/appkit/logtracing"
 )
+
+func TraceRequest(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		path := r.RequestURI
+
+		ctx, span := logtracing.StartSpan(r.Context(), fmt.Sprintf("%s %s", r.Method, path))
+		r = r.WithContext(ctx)
+		span.AppendKVs(
+			logtracing.HTTPServerKVs(r)...,
+		)
+
+		// NOTE for compatibility
+		span.AppendKVs(
+			"context", "http",
+			"path", path,
+			"method", r.Method,
+			"client_ip", clientIP(r),
+		)
+
+		defer func() {
+			status, _ := contexts.HTTPStatus(r.Context())
+			span.AppendKVs(
+				"http.status", status,
+			)
+
+			// NOTE for compatibility
+			span.End()
+			span.AppendKVs(
+				"request_us", span.Duration().Microseconds(),
+				"status", status,
+				"user_agent", r.UserAgent(),
+			)
+
+			// Will absorb panics in earlier middleware
+			if err := recover(); err != nil {
+				span.RecordPanic(err)
+
+				// NOTE for compacibility
+				stack := stack(7)
+				span.AppendKVs(
+					"err", err,
+					"stack", string(stack),
+				)
+			}
+
+			logtracing.LogSpan(r.Context(), span)
+		}()
+
+		h.ServeHTTP(rw, r)
+
+	})
+}
 
 // Will absorb panics in earlier Middleware. Times the request and logs the result. FIXME split the timing out into a separate Middleware
 func LogRequest(h http.Handler) http.Handler {

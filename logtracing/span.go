@@ -19,7 +19,8 @@ type span struct {
 	startTime time.Time
 	endTime   time.Time
 
-	err error
+	err   error
+	panic interface{}
 
 	keyvals []interface{}
 	mu      sync.Mutex
@@ -31,6 +32,10 @@ func (s *span) IsRecording() bool {
 
 func (s *span) RecordError(err error) {
 	s.err = err
+}
+
+func (s *span) RecordPanic(panic interface{}) {
+	s.panic = panic
 }
 
 func (s *span) End() {
