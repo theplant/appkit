@@ -96,6 +96,15 @@ For the client requests:
 - `http.method`: the request method
 - `http.status`: thes response status, only exists when getting the response successfully
 
+For the server requests:
+
+- `span.type`: `http`
+- `span.role`: `server`
+- `http.path`: the request path
+- `http.method`: the request method
+- `http.user_agent`: the request user agent
+- `http.client_ip`: the request client IP
+
 ### Queue
 
 - `span.type`: `queue`

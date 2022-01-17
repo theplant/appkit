@@ -2,7 +2,9 @@ package logtracing
 
 import (
 	"fmt"
+	"net"
 	"net/http"
+	"strings"
 )
 
 func HTTPClientKVs(req *http.Request) []interface{} {
@@ -42,4 +44,28 @@ func (tr *HTTPTransport) RoundTrip(req *http.Request) (resp *http.Response, err 
 	return TraceHTTPRequest(tr.RoundTripper.RoundTrip, tr.BaseName, req)
 }
 
-// TODO: add a middleware to trace http requests
+func HTTPServerKVs(req *http.Request) []interface{} {
+	return []interface{}{
+		"span.type", "http",
+		"span.role", "server",
+		"http.path", req.URL.Path,
+		"http.method", req.Method,
+		"http.user_agent", req.UserAgent(),
+		"http.client_ip", clientIP(req),
+	}
+}
+
+func clientIP(r *http.Request) string {
+	clientIP := r.Header.Get("X-Forwarded-For")
+	if index := strings.IndexByte(clientIP, ','); index >= 0 {
+		clientIP = clientIP[0:index]
+	}
+	clientIP = strings.TrimSpace(clientIP)
+	if len(clientIP) > 0 {
+		return clientIP
+	}
+	if ip, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr)); err == nil {
+		return ip
+	}
+	return ""
+}
