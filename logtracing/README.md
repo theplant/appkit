@@ -114,3 +114,11 @@ For the server requests:
 
 For the internal functions:
 - `span.role`: `internal`
+
+## Migration from `util/trace.go`
+
+1. Use `logtracing.TraceFunc` to replace `util.Lt`
+2. use `logtracing.AppendSpanKVs` to replace `util.AppendKVs`
+3. use `logtracing.TraceHTTPRequest` to replace `util.LtRequest`
+4. use `logtracing.HTTPTransport` to replace `util.LtTransport`
+5. use `logtracing.XMLRPCClientKVs` to replace `util.XMLRpcKVs`
