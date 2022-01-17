@@ -1,4 +1,4 @@
-# Trace
+# logtracing
 
 This package provides APIs for tracing functions and printing traces into logs.
 
@@ -30,7 +30,7 @@ func DoWork(ctx context.Context) err error {
 		"service", "greeter",
 	)
 
-	// or get the active span from context
+	// or get the active span from the context
 
 	span := logtracing.SpanFromContext(ctx)
 	span.AppendKVs(
@@ -49,12 +49,59 @@ func DoWork(ctx context.Context) err error {
 }
 ```
 
-## Guidence
+## Key-values
+
+### Common
+
+- `ts`
+- `msg`
+- `trace.id`
+- `span.id`
+- `span.context`
+- `span.dur_ms`
+- `span.parent_id`
+
+If the span records an error, these key-values will be added:
+
+- `span.err`
+- `span.err_type`
+- `span.with_err`
 
 ### XMLRPC
 
+- `span.type`: `xmlrpc`
+- `span.role`: `client`
+- `xmlrpc.method`: the service method
+- `http.method`: `post`
+- `http.url`: the server URL
+- `xmlrpc.fault_string`: only exists when getting a fault error
+
 ### GRPC
+
+- `span.type`: `grpc`
+- `span.role`: `client` or `server`
+- `grpc.service`: gRPC service name
+- `grpc.method`: gRPC method name
+- `grpc.code`: gRPC response status code
+
+The package provides server and client interceptors to log these key-values automatically.
 
 ### HTTP
 
+For the client requests:
+
+- `span.type`: `http`
+- `span.role`: `client`
+- `http.url`: the request full URL
+- `http.method`: the request method
+- `http.status`: thes response status, only exists when getting the response successfully
+
+### Queue
+
+- `span.type`: `queue`
+- `span.role`: `consumer` or `producer`
+
 ### Function
+
+For the internal functions:
+- `span.role`: `internal`
