@@ -19,7 +19,7 @@ func DoWork(ctx context.Context) err error {
 }
 ```
 
-It will creates a new span, record the error, and log the span with the logger in context.
+It will create a new span, record the error, and log the span with the logger in context.
 
 You can append key-values to an active span with `AppendSpanKvs`:
 
