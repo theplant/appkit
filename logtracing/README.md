@@ -123,7 +123,7 @@ For the server requests:
 
 ### Function
 
-For the internal functions:
+For internal functions:
 - `span.role`: `internal`
 
 ## How to migrate from `util/trace.go`
