@@ -67,6 +67,17 @@ If the span records an error, these key-values will be added:
 - `span.err_type`
 - `span.with_err`
 
+### Reference
+
+- `span.type`: This usually describes "how" the span is sent/received, what kind of underlying API or network transport is used, eg  `http`, `sql`, `grpc`, `dns`, `aws.<service>`
+- `span.role`: This describes what role this span plays in an interaction with another service, eg for HTTP a `client` makes a request to a `server`. Or in a `queue`, a `producer` adds work to the queue, that is consumed by a `consumer`.
+
+Data that is for specific types should use the type as a prefix when adding supplementary keys-values, For example:
+
+- With `span.type=http`, the HTTP method would be logged as `http.method`, the response status would be logged as `http.status=200`.
+
+- AWS S3 API calls (`span.type=aws.s3`), use `s3` or `aws.s3` as a prefix, an object used in the API call could be logged as `s3.object=<object key>` (or `aws.s3.object=<object key>`)
+
 ### XMLRPC
 
 - `span.type`: `xmlrpc`
