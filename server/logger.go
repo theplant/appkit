@@ -13,7 +13,7 @@ import (
 	"github.com/theplant/appkit/logtracing"
 )
 
-// Will absorb panics in earlier Middleware. Times the request and logs the result. FIXME split the timing out into a separate Middleware
+// Will absorb panics in earlier Middleware. Times the request and logs the result.
 func LogRequest(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		path := r.RequestURI
