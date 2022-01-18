@@ -140,6 +140,7 @@ func LogSpan(ctx context.Context, s *span) {
 			"span.panic", s.panic,
 			"span.panic_type", errType(s.err),
 			"span.with_panic", 1,
+			"span.with_err", 1,
 		)
 		l.Crit().Log(keyvals...)
 		return
