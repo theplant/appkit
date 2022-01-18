@@ -1,6 +1,6 @@
 # logtracing
 
-This package provides APIs for tracing functions and printing traces into logs.
+This package is a toolkit for log-based tracing. It provides sevaral APIs for adding traces for the application, and logging the traces in a stardard format.
 
 ## Usage
 
@@ -10,7 +10,7 @@ Import the package
 import 'github.com/theplant/appkit/logtracing'
 ```
 
-Inside a function, add these two lines to trace it:
+Inside a function, you can use these two APIs to track it:
 
 ```
 func DoWork(ctx context.Context) err error {
@@ -19,21 +19,16 @@ func DoWork(ctx context.Context) err error {
 }
 ```
 
-It will trace the function, record the error, and finally log the span with the logger in context.
+It will creates a new span, record the error, and log the span with the logger in context.
 
-You can append key-values to an active span:
+You can append key-values to an active span with `AppendSpanKvs`:
 
 ```
 func DoWork(ctx context.Context) err error {
 	ctx, _ := logtracing.StartSpan(ctx, "<span.context>")
+	defer func() { logtracing.EndSpan(ctx, err) }()
+
 	logtracing.AppendSpanKVs(ctx,
-		"service", "greeter",
-	)
-
-	// or get the active span from the context
-
-	span := logtracing.SpanFromContext(ctx)
-	span.AppendKVs(
 		"service", "greeter",
 	)
 }
@@ -45,15 +40,24 @@ If you want to append key-values to all spans, you can append the key-values to 
 func DoWork(ctx context.Context) err error {
 	// all the spans within this context will contain `"key": "value"`
 	ctx = logtracing.ContextWithKVs(ctx, "key", "value")
+
 	ctx, _ = logtracing.StartSpan(ctx, "test")
 }
 ```
 
+For flexibility, the package provides the following APIs to manipulate the span directly:
+
+- `(*span).AppendKVs(...interface{})`
+- `(*span).RecordError(err error)`
+- `(*span).RecordPanic(panic interface{}})`
+- `(*span).End()`
+- `LogSpan(ctx context, s *span)`
+
 ## Key-values
 
-These are automatically added to the span.
-
 ### Common
+
+With `logtracing.StartSpan` and `logtracing.EndSpan`, these are automatically added to the span:
 
 - `ts`
 - `msg`
