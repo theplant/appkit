@@ -51,6 +51,8 @@ func DoWork(ctx context.Context) err error {
 
 ## Key-values
 
+These are automatically added to the span.
+
 ### Common
 
 - `ts`
@@ -115,6 +117,7 @@ For the server requests:
 - `http.method`: the request method
 - `http.user_agent`: the request user agent
 - `http.client_ip`: the request client IP
+- `http.status`: the response status
 
 ### Queue
 

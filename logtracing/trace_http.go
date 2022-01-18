@@ -69,3 +69,9 @@ func clientIP(r *http.Request) string {
 	}
 	return ""
 }
+
+func HTTPServerResponseKVs(status string) []interface{} {
+	return []interface{}{
+		"http.status", status,
+	}
+}
