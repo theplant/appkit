@@ -9,7 +9,7 @@ import (
 	"github.com/theplant/appkit/log"
 )
 
-func TestTraceRequest(t *testing.T) {
+func TestLogRequest(t *testing.T) {
 	req, err := http.NewRequest("GET", "http://example.com/test", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
@@ -19,8 +19,7 @@ func TestTraceRequest(t *testing.T) {
 	h := Compose(
 		// Recovery should come before logReq to set the status code to 500
 		Recovery,
-		TraceRequest,
-		// LogRequest,
+		LogRequest,
 		log.WithLogger(log.Default()),
 		contexts.WithHTTPStatus,
 	)(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
