@@ -105,7 +105,7 @@ For the client requests:
 - `span.role`: `client`
 - `http.url`: the request full URL
 - `http.method`: the request method
-- `http.status`: thes response status, only exists when getting the response successfully
+- `http.status`: the response status, only exists when getting the response successfully
 
 For the server requests:
 
