@@ -8,69 +8,57 @@ import (
 	"net/http"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/theplant/appkit/contexts"
-	"github.com/theplant/appkit/log"
+	"github.com/theplant/appkit/logtracing"
 )
 
-// Will absorb panics in earlier Middleware. Times the request and logs the result. FIXME split the timing out into a separate Middleware
+// Will absorb panics in earlier Middleware. Times the request and logs the result.
 func LogRequest(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		start := time.Now()
 		path := r.RequestURI
 
-		ctx := r.Context()
+		ctx, span := logtracing.StartSpan(r.Context(), fmt.Sprintf("%s %s", r.Method, path))
+		r = r.WithContext(ctx)
+		span.AppendKVs(
+			logtracing.HTTPServerKVs(r)...,
+		)
 
-		logger, ok := log.FromContext(ctx)
-
-		if !ok {
-			h.ServeHTTP(rw, r)
-			return
-		}
-
-		l := logger.With(
+		// NOTE for compatibility
+		span.AppendKVs(
 			"context", "http",
 			"path", path,
 			"method", r.Method,
 			"client_ip", clientIP(r),
 		)
 
-		l.Debug().Log("msg", fmt.Sprintf("%s %s", r.Method, path))
-
 		defer func() {
-			duration := int64(time.Since(start) / time.Microsecond)
-
 			status, _ := contexts.HTTPStatus(r.Context())
+			span.AppendKVs(
+				"http.status", status,
+			)
 
-			l = l.With(
-				"request_us", duration,
+			// NOTE for compatibility
+			span.End()
+			span.AppendKVs(
+				"request_us", span.Duration().Microseconds(),
 				"status", status,
-				//					"response_size", rw.Size(),
 				"user_agent", r.UserAgent(),
 			)
 
-			msg := fmt.Sprintf("%s %s -> %03d %s", r.Method, path, status, http.StatusText(status))
-
 			// Will absorb panics in earlier middleware
 			if err := recover(); err != nil {
+				span.RecordPanic(err)
+
+				// NOTE for compacibility
 				stack := stack(7)
-				l = l.With(
+				span.AppendKVs(
 					"err", err,
 					"stack", string(stack),
 				)
-				msg = fmt.Sprintf("%s (panic: %v)", msg, err)
 			}
 
-			if status > 500 {
-				l.Error().Log("msg", msg)
-			} else if status == 500 {
-				l.Crit().Log("msg", msg)
-			} else if status >= 400 {
-				l.Warn().Log("msg", msg)
-			} else {
-				l.Info().Log("msg", msg)
-			}
+			logtracing.LogSpan(r.Context(), span)
 		}()
 
 		h.ServeHTTP(rw, r)
