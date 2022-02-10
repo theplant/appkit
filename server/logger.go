@@ -16,9 +16,7 @@ import (
 // Will absorb panics in earlier Middleware. Times the request and logs the result.
 func LogRequest(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		path := r.RequestURI
-
-		ctx, span := logtracing.StartSpan(r.Context(), fmt.Sprintf("%s %s", r.Method, path))
+		ctx, span := logtracing.StartSpan(r.Context(), fmt.Sprintf("%s %s", r.Method, r.URL.Path))
 		r = r.WithContext(ctx)
 		span.AppendKVs(
 			logtracing.HTTPServerKVs(r)...,
@@ -27,7 +25,7 @@ func LogRequest(h http.Handler) http.Handler {
 		// NOTE for compatibility
 		span.AppendKVs(
 			"context", "http",
-			"path", path,
+			"path", r.RequestURI,
 			"method", r.Method,
 			"client_ip", clientIP(r),
 		)
