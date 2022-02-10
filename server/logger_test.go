@@ -10,7 +10,7 @@ import (
 )
 
 func TestLogRequest(t *testing.T) {
-	req, err := http.NewRequest("GET", "http://example.com/test", nil)
+	req, err := http.NewRequest("GET", "http://example.com/test?name=w", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}

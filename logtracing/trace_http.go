@@ -48,8 +48,9 @@ func HTTPServerKVs(req *http.Request) []interface{} {
 	return []interface{}{
 		"span.type", "http",
 		"span.role", "server",
-		"http.path", req.URL.Path,
 		"http.method", req.Method,
+		"http.path", req.URL.Path,
+		"http.query_string", req.URL.RawQuery,
 		"http.user_agent", req.UserAgent(),
 		"http.client_ip", clientIP(req),
 	}
