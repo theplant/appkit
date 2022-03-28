@@ -3,7 +3,7 @@ module github.com/theplant/appkit
 go 1.17
 
 require (
-	github.com/airbrake/gobrake v3.7.4+incompatible
+	github.com/airbrake/gobrake/v4 v4.2.0
 	github.com/aws/aws-sdk-go v1.24.5
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/go-kit/kit v0.9.0
@@ -21,7 +21,7 @@ require (
 	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
 	github.com/newrelic/go-agent v2.13.0+incompatible
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
 	github.com/rs/cors v1.7.0
 	github.com/theplant/testingutils v0.0.0-20190603093022-26d8b4d95c61
 	github.com/uber/jaeger-client-go v2.29.1+incompatible
@@ -33,7 +33,7 @@ require (
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
-	github.com/caio/go-tdigest v2.3.0+incompatible // indirect
+	github.com/caio/go-tdigest v3.1.0+incompatible // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-logfmt/logfmt v0.4.0 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
@@ -49,12 +49,10 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jjeffery/kv v0.8.1 // indirect
 	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
-	github.com/leesper/go_rng v0.0.0-20190531154944-a612b043e353 // indirect
+	github.com/jonboulle/clockwork v0.2.3 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
-	github.com/onsi/ginkgo v1.7.0 // indirect
-	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
