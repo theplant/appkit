@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	"github.com/airbrake/gobrake"
+	gobrake "github.com/airbrake/gobrake/v4"
 	"github.com/theplant/appkit/log"
 )
 
