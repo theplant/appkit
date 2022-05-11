@@ -22,6 +22,7 @@ func TraceHTTPRequest(do func(*http.Request) (*http.Response, error), baseName s
 	AppendSpanKVs(ctx,
 		HTTPClientKVs(req)...,
 	)
+	req = req.WithContext(ctx)
 	resp, err = do(req)
 	if err == nil {
 		AppendSpanKVs(ctx,
