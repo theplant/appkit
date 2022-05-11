@@ -155,8 +155,11 @@ func LogSpan(ctx context.Context, s *span) {
 		"span.id", s.spanID,
 		"span.context", s.name,
 		"span.dur_ms", dur.Milliseconds(),
-		"span.is_sampled", s.isSampled,
 	)
+
+	if s.isSampled {
+		keyvals = append(keyvals, "span.is_sampled", 1)
+	}
 
 	if s.parent != nil {
 		keyvals = append(keyvals, "span.parent_id", s.parent.spanID)
