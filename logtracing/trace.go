@@ -45,27 +45,67 @@ func contextWithSpan(parent context.Context, s *span) context.Context {
 	return context.WithValue(parent, activeSpanKey, s)
 }
 
-func StartSpan(ctx context.Context, name string) (context.Context, *span) {
-	var (
-		idGenerator = GetIDGenerator()
+type StartOptions struct {
+	Sampler Sampler
+}
 
-		parent  = SpanFromContext(ctx)
-		traceID TraceID
-		spanID  = idGenerator.NewSpanID()
+type StartOption func(*StartOptions)
+
+func WithSampler(sampler Sampler) StartOption {
+	return func(o *StartOptions) {
+		o.Sampler = sampler
+	}
+}
+
+func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Context, *span) {
+	var (
+		opts        StartOptions
+		cfg         = config.Load().(*Config)
+		idGenerator = cfg.IDGenerator
+
+		parent    = SpanFromContext(ctx)
+		traceID   TraceID
+		spanID    = idGenerator.NewSpanID()
+		isSampled bool
 	)
+
+	for _, op := range o {
+		op(&opts)
+	}
 
 	if parent == nil {
 		traceID = idGenerator.NewTraceID()
 	} else {
 		traceID = parent.traceID
+		isSampled = parent.isSampled
+	}
+
+	sampler := cfg.DefaultSampler
+	if parent == nil || opts.Sampler != nil {
+		if opts.Sampler != nil {
+			sampler = opts.Sampler
+		}
+
+		var parentMeta SpanMeta
+		if parent != nil {
+			parentMeta = parent.Meta()
+		}
+
+		isSampled = sampler(SamplingParameters{
+			ParentMeta: parentMeta,
+			TraceID:    traceID,
+			SpanID:     spanID,
+			Name:       name,
+		})
 	}
 
 	s := span{
 		parent: parent,
 
-		traceID: traceID,
-		spanID:  spanID,
-		name:    name,
+		traceID:   traceID,
+		spanID:    spanID,
+		name:      name,
+		isSampled: isSampled,
 
 		startTime: time.Now(),
 	}
@@ -115,6 +155,7 @@ func LogSpan(ctx context.Context, s *span) {
 		"span.id", s.spanID,
 		"span.context", s.name,
 		"span.dur_ms", dur.Milliseconds(),
+		"span.is_sampled", s.isSampled,
 	)
 
 	if s.parent != nil {

@@ -121,3 +121,12 @@ func TestTrace(t *testing.T) {
 		t.Fatalf("span should have 6 keyvals, but got %v", len(span3.keyvals))
 	}
 }
+
+func TestTraceWithNeverSampler(t *testing.T) {
+	ctx := context.Background()
+	ctx, span := StartSpan(ctx, "test", WithSampler(NeverSample()))
+	defer func() { EndSpan(ctx, nil) }()
+	if span.isSampled {
+		t.Fatalf("span should not be sampled")
+	}
+}
