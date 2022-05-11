@@ -22,6 +22,28 @@ func BenchmarkTracing(b *testing.B) {
 	}
 }
 
+func BenchmarkSampling(b *testing.B) {
+	ctx := log.Context(context.Background(), log.Default())
+	ApplyConfig(Config{
+		DefaultSampler: ProbabilitySampler(0.25),
+	})
+	var (
+		sampledCount   int
+		unsampledCount int
+	)
+	for i := 0; i < b.N; i++ {
+		ctx, s := StartSpan(ctx, "test")
+		if s.isSampled {
+			sampledCount++
+		} else {
+			unsampledCount++
+		}
+		EndSpan(ctx, nil)
+	}
+
+	b.Logf("Sampled count: %v, unsampled count: %v\n", sampledCount, unsampledCount)
+}
+
 func TestStartSpanWithoutParent(t *testing.T) {
 	ctx := context.Background()
 	ctx, s := StartSpan(ctx, "top-level")
@@ -122,11 +144,41 @@ func TestTrace(t *testing.T) {
 	}
 }
 
+func TestTraceWithDefaultNeverSampler(t *testing.T) {
+	ApplyConfig(Config{
+		DefaultSampler: NeverSample(),
+	})
+	ctx := context.Background()
+	ctx, span := StartSpan(ctx, "test")
+	defer func() { EndSpan(ctx, nil) }()
+	if span.isSampled {
+		t.Fatalf("span should not be sampled")
+	}
+}
+
 func TestTraceWithNeverSampler(t *testing.T) {
 	ctx := context.Background()
 	ctx, span := StartSpan(ctx, "test", WithSampler(NeverSample()))
 	defer func() { EndSpan(ctx, nil) }()
 	if span.isSampled {
 		t.Fatalf("span should not be sampled")
+	}
+}
+
+func TestChildrenAreSampledAsParent(t *testing.T) {
+	ApplyConfig(Config{
+		DefaultSampler: NeverSample(),
+	})
+	ctx := context.Background()
+	pctx, pspan := StartSpan(ctx, "parent", WithSampler(AlwaysSample()))
+	defer func() { EndSpan(pctx, nil) }()
+	if !pspan.isSampled {
+		t.Fatalf("parent span should be sampled")
+	}
+
+	cctx, cspan := StartSpan(pctx, "chiled")
+	defer func() { EndSpan(cctx, nil) }()
+	if !cspan.isSampled {
+		t.Fatalf("child span should be sampled")
 	}
 }
