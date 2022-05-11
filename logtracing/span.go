@@ -12,9 +12,9 @@ import (
 type span struct {
 	parent *span
 
-	traceID     TraceID
-	spanID      SpanID
-	spanContext string
+	traceID TraceID
+	spanID  SpanID
+	name    string
 
 	startTime time.Time
 	endTime   time.Time

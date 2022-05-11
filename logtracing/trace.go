@@ -63,9 +63,9 @@ func StartSpan(ctx context.Context, name string) (context.Context, *span) {
 	s := span{
 		parent: parent,
 
-		traceID:     traceID,
-		spanID:      spanID,
-		spanContext: name,
+		traceID: traceID,
+		spanID:  spanID,
+		name:    name,
 
 		startTime: time.Now(),
 	}
@@ -113,7 +113,7 @@ func LogSpan(ctx context.Context, s *span) {
 		"ts", s.startTime.Format(time.RFC3339Nano),
 		"trace.id", s.traceID,
 		"span.id", s.spanID,
-		"span.context", s.spanContext,
+		"span.context", s.name,
 		"span.dur_ms", dur.Milliseconds(),
 	)
 
@@ -125,7 +125,7 @@ func LogSpan(ctx context.Context, s *span) {
 
 	if s.err != nil {
 		keyvals = append(keyvals,
-			"msg", fmt.Sprintf("%s (%v) -> %s (%T)", s.spanContext, dur, s.err, s.err),
+			"msg", fmt.Sprintf("%s (%v) -> %s (%T)", s.name, dur, s.err, s.err),
 			"span.err", s.err,
 			"span.err_type", errType(s.err),
 			"span.with_err", 1,
@@ -136,7 +136,7 @@ func LogSpan(ctx context.Context, s *span) {
 
 	if s.panic != nil {
 		keyvals = append(keyvals,
-			"msg", fmt.Sprintf("%s (%v) -> panic: %s (%T)", s.spanContext, dur, s.err, s.err),
+			"msg", fmt.Sprintf("%s (%v) -> panic: %s (%T)", s.name, dur, s.err, s.err),
 			"span.panic", s.panic,
 			"span.panic_type", errType(s.err),
 			"span.with_panic", 1,
@@ -147,7 +147,7 @@ func LogSpan(ctx context.Context, s *span) {
 	}
 
 	keyvals = append(keyvals,
-		"msg", fmt.Sprintf("%s (%v) -> success", s.spanContext, dur),
+		"msg", fmt.Sprintf("%s (%v) -> success", s.name, dur),
 	)
 	l.Info().Log(keyvals...)
 }

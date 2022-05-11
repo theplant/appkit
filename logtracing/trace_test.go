@@ -29,7 +29,7 @@ func TestStartSpanWithoutParent(t *testing.T) {
 	if s == nil {
 		t.Fatalf("span should not be nil")
 	}
-	if s.spanContext != "top-level" {
+	if s.name != "top-level" {
 		t.Fatalf("span context should be the same as the name")
 	}
 	if len(s.traceID) == 0 {
@@ -58,7 +58,7 @@ func TestStartSpanWithParent(t *testing.T) {
 	if secondLevelS == nil {
 		t.Fatalf("span should not be nil")
 	}
-	if secondLevelS.spanContext != "second-level" {
+	if secondLevelS.name != "second-level" {
 		t.Fatalf("span context should be the same as the name")
 	}
 	if len(secondLevelS.traceID) == 0 {

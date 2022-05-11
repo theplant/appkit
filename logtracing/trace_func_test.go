@@ -24,7 +24,7 @@ func TestTraceFunc(t *testing.T) {
 		t.Fatalf("span should be in context")
 	}
 
-	if s.spanContext != "test" {
+	if s.name != "test" {
 		t.Fatalf("span context should be the same as the name")
 	}
 
