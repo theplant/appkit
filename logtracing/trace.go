@@ -45,27 +45,67 @@ func contextWithSpan(parent context.Context, s *span) context.Context {
 	return context.WithValue(parent, activeSpanKey, s)
 }
 
-func StartSpan(ctx context.Context, name string) (context.Context, *span) {
-	var (
-		idGenerator = GetIDGenerator()
+type StartOptions struct {
+	Sampler Sampler
+}
 
-		parent  = SpanFromContext(ctx)
-		traceID TraceID
-		spanID  = idGenerator.NewSpanID()
+type StartOption func(*StartOptions)
+
+func WithSampler(sampler Sampler) StartOption {
+	return func(o *StartOptions) {
+		o.Sampler = sampler
+	}
+}
+
+func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Context, *span) {
+	var (
+		opts        StartOptions
+		cfg         = config.Load().(*Config)
+		idGenerator = cfg.IDGenerator
+
+		parent    = SpanFromContext(ctx)
+		traceID   TraceID
+		spanID    = idGenerator.NewSpanID()
+		isSampled bool
 	)
+
+	for _, op := range o {
+		op(&opts)
+	}
 
 	if parent == nil {
 		traceID = idGenerator.NewTraceID()
 	} else {
 		traceID = parent.traceID
+		isSampled = parent.isSampled
+	}
+
+	sampler := cfg.DefaultSampler
+	if parent == nil || opts.Sampler != nil {
+		if opts.Sampler != nil {
+			sampler = opts.Sampler
+		}
+
+		var parentMeta spanMeta
+		if parent != nil {
+			parentMeta = parent.meta()
+		}
+
+		isSampled = sampler(SamplingParameters{
+			ParentMeta: parentMeta,
+			TraceID:    traceID,
+			SpanID:     spanID,
+			Name:       name,
+		})
 	}
 
 	s := span{
 		parent: parent,
 
-		traceID:     traceID,
-		spanID:      spanID,
-		spanContext: name,
+		traceID:   traceID,
+		spanID:    spanID,
+		name:      name,
+		isSampled: isSampled,
 
 		startTime: time.Now(),
 	}
@@ -113,9 +153,13 @@ func LogSpan(ctx context.Context, s *span) {
 		"ts", s.startTime.Format(time.RFC3339Nano),
 		"trace.id", s.traceID,
 		"span.id", s.spanID,
-		"span.context", s.spanContext,
+		"span.context", s.name,
 		"span.dur_ms", dur.Milliseconds(),
 	)
+
+	if s.isSampled {
+		keyvals = append(keyvals, "span.is_sampled", 1)
+	}
 
 	if s.parent != nil {
 		keyvals = append(keyvals, "span.parent_id", s.parent.spanID)
@@ -125,7 +169,7 @@ func LogSpan(ctx context.Context, s *span) {
 
 	if s.err != nil {
 		keyvals = append(keyvals,
-			"msg", fmt.Sprintf("%s (%v) -> %s (%T)", s.spanContext, dur, s.err, s.err),
+			"msg", fmt.Sprintf("%s (%v) -> %s (%T)", s.name, dur, s.err, s.err),
 			"span.err", s.err,
 			"span.err_type", errType(s.err),
 			"span.with_err", 1,
@@ -136,7 +180,7 @@ func LogSpan(ctx context.Context, s *span) {
 
 	if s.panic != nil {
 		keyvals = append(keyvals,
-			"msg", fmt.Sprintf("%s (%v) -> panic: %s (%T)", s.spanContext, dur, s.err, s.err),
+			"msg", fmt.Sprintf("%s (%v) -> panic: %s (%T)", s.name, dur, s.err, s.err),
 			"span.panic", s.panic,
 			"span.panic_type", errType(s.err),
 			"span.with_panic", 1,
@@ -147,7 +191,7 @@ func LogSpan(ctx context.Context, s *span) {
 	}
 
 	keyvals = append(keyvals,
-		"msg", fmt.Sprintf("%s (%v) -> success", s.spanContext, dur),
+		"msg", fmt.Sprintf("%s (%v) -> success", s.name, dur),
 	)
 	l.Info().Log(keyvals...)
 }

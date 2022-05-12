@@ -9,12 +9,20 @@ import (
 	"time"
 )
 
+type spanMeta struct {
+	TraceID   TraceID
+	SpanID    SpanID
+	Name      string
+	IsSampled bool
+}
+
 type span struct {
 	parent *span
 
-	traceID     TraceID
-	spanID      SpanID
-	spanContext string
+	traceID   TraceID
+	spanID    SpanID
+	name      string
+	isSampled bool
 
 	startTime time.Time
 	endTime   time.Time
@@ -72,6 +80,15 @@ func (s *span) AppendKVs(keyvals ...interface{}) {
 	defer s.mu.Unlock()
 
 	s.keyvals = append(s.keyvals, keyvals...)
+}
+
+func (s *span) meta() spanMeta {
+	return spanMeta{
+		TraceID:   s.traceID,
+		SpanID:    s.spanID,
+		Name:      s.name,
+		IsSampled: s.isSampled,
+	}
 }
 
 // TraceID is a unique identity of a trace.

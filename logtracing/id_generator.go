@@ -42,17 +42,3 @@ func defaultIDGenerator() IDGenerator {
 	gen.randSource = rand.New(rand.NewSource(rngSeed))
 	return gen
 }
-
-var _idGenerator IDGenerator
-
-func init() {
-	_idGenerator = defaultIDGenerator()
-}
-
-func GetIDGenerator() IDGenerator {
-	return _idGenerator
-}
-
-func SetIDGenerator(idGenerator IDGenerator) {
-	_idGenerator = idGenerator
-}

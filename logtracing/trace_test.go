@@ -22,6 +22,28 @@ func BenchmarkTracing(b *testing.B) {
 	}
 }
 
+func BenchmarkSampling(b *testing.B) {
+	ctx := log.Context(context.Background(), log.Default())
+	ApplyConfig(Config{
+		DefaultSampler: ProbabilitySampler(0.25),
+	})
+	var (
+		sampledCount   int
+		unsampledCount int
+	)
+	for i := 0; i < b.N; i++ {
+		ctx, s := StartSpan(ctx, "test")
+		if s.isSampled {
+			sampledCount++
+		} else {
+			unsampledCount++
+		}
+		EndSpan(ctx, nil)
+	}
+
+	b.Logf("Sampled count: %v, unsampled count: %v\n", sampledCount, unsampledCount)
+}
+
 func TestStartSpanWithoutParent(t *testing.T) {
 	ctx := context.Background()
 	ctx, s := StartSpan(ctx, "top-level")
@@ -29,7 +51,7 @@ func TestStartSpanWithoutParent(t *testing.T) {
 	if s == nil {
 		t.Fatalf("span should not be nil")
 	}
-	if s.spanContext != "top-level" {
+	if s.name != "top-level" {
 		t.Fatalf("span context should be the same as the name")
 	}
 	if len(s.traceID) == 0 {
@@ -58,7 +80,7 @@ func TestStartSpanWithParent(t *testing.T) {
 	if secondLevelS == nil {
 		t.Fatalf("span should not be nil")
 	}
-	if secondLevelS.spanContext != "second-level" {
+	if secondLevelS.name != "second-level" {
 		t.Fatalf("span context should be the same as the name")
 	}
 	if len(secondLevelS.traceID) == 0 {
@@ -119,5 +141,44 @@ func TestTrace(t *testing.T) {
 	defer func() { EndSpan(ctx3, errors.New("third-level-failed")) }()
 	if len(span3.keyvals) != 6 {
 		t.Fatalf("span should have 6 keyvals, but got %v", len(span3.keyvals))
+	}
+}
+
+func TestTraceWithDefaultNeverSampler(t *testing.T) {
+	ApplyConfig(Config{
+		DefaultSampler: NeverSample(),
+	})
+	ctx := context.Background()
+	ctx, span := StartSpan(ctx, "test")
+	defer func() { EndSpan(ctx, nil) }()
+	if span.isSampled {
+		t.Fatalf("span should not be sampled")
+	}
+}
+
+func TestTraceWithNeverSampler(t *testing.T) {
+	ctx := context.Background()
+	ctx, span := StartSpan(ctx, "test", WithSampler(NeverSample()))
+	defer func() { EndSpan(ctx, nil) }()
+	if span.isSampled {
+		t.Fatalf("span should not be sampled")
+	}
+}
+
+func TestChildrenAreSampledAsParent(t *testing.T) {
+	ApplyConfig(Config{
+		DefaultSampler: NeverSample(),
+	})
+	ctx := context.Background()
+	pctx, pspan := StartSpan(ctx, "parent", WithSampler(AlwaysSample()))
+	defer func() { EndSpan(pctx, nil) }()
+	if !pspan.isSampled {
+		t.Fatalf("parent span should be sampled")
+	}
+
+	cctx, cspan := StartSpan(pctx, "chiled")
+	defer func() { EndSpan(cctx, nil) }()
+	if !cspan.isSampled {
+		t.Fatalf("child span should be sampled")
 	}
 }
