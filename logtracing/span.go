@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type SpanMeta struct {
+type spanMeta struct {
 	TraceID   TraceID
 	SpanID    SpanID
 	Name      string
@@ -82,8 +82,8 @@ func (s *span) AppendKVs(keyvals ...interface{}) {
 	s.keyvals = append(s.keyvals, keyvals...)
 }
 
-func (s *span) Meta() SpanMeta {
-	return SpanMeta{
+func (s *span) meta() spanMeta {
+	return spanMeta{
 		TraceID:   s.traceID,
 		SpanID:    s.spanID,
 		Name:      s.name,

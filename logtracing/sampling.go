@@ -7,7 +7,7 @@ import (
 type Sampler func(SamplingParameters) bool
 
 type SamplingParameters struct {
-	ParentMeta SpanMeta
+	ParentMeta spanMeta
 	TraceID    TraceID
 	SpanID     SpanID
 	Name       string

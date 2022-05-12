@@ -86,9 +86,9 @@ func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Cont
 			sampler = opts.Sampler
 		}
 
-		var parentMeta SpanMeta
+		var parentMeta spanMeta
 		if parent != nil {
-			parentMeta = parent.Meta()
+			parentMeta = parent.meta()
 		}
 
 		isSampled = sampler(SamplingParameters{
