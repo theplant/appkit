@@ -39,11 +39,12 @@ In request-processing order:
 2. Request tracing via Opentracing/Jaeger
 3. Notification of `panic`s to Airbrake
 4. Logging request metrics in InfluxDB
-5. Add HSTS header
-6. Sending request information to New Relic
-7. CORS handling
-8. HTTP Basic Authentication
-9. Adding AWS session to request context
+5. Add clickjacking countermeasure header
+6. Add HSTS header
+7. Sending request information to New Relic
+8. CORS handling
+9. HTTP Basic Authentication
+10. Adding AWS session to request context
 
 # Configuration
 
@@ -172,6 +173,19 @@ Environment variables:
   .
 
 HSTS header will only be added when the value of `HSTS_MaxAge` is greater than 0
+
+## Add clickjacking countermeasure header
+
+[X-Frame-Options](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options)
+[Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy)
+
+Environment variables:
+
+* `DISPLAY_IN_FRAME_Deny`: Bool type. If `true`, the page cannot be displayed in a frame.
+
+* `DISPLAY_IN_FRAME_SameOrigin`: Bool type. If `true`, the page can only be displayed in a frame on the same origin as the page itself.
+
+* `DISPLAY_IN_FRAME_AllowURIs`: A string contains URIs separated by spaces. If it has value, the page can only be displayed in a frame on specified URIs.
 
 # Design Background
 
