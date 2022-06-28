@@ -319,7 +319,7 @@ func hstsMiddleware(logger log.Logger) server.Middleware {
 // to avoid clickjacking attacks
 
 type diplayInFrameConfig struct {
-	Deny       bool
+	NoLimit    bool
 	SameOrigin bool
 	// separated by spaces
 	AllowURIs string
@@ -333,33 +333,33 @@ func avoidClickjackingMiddleware(logger log.Logger) server.Middleware {
 		panic(err)
 	}
 
-	if config == (diplayInFrameConfig{}) {
-		logger.Warn().Log(
-			"msg", "not configuring whether the page can be displayed in a frame",
+	if config.NoLimit {
+		logger.Info().Log(
+			"msg", "no limit on whether the page can be displayed in a frame",
 		)
 		return server.IdMiddleware
 	}
 
 	var xfoVal string
 	var cspVal string
-	if config.Deny {
-		logger.Info().Log(
-			"msg", "configuring the page cannot be displayed in a frame",
-		)
-		xfoVal = "DENY"
-		cspVal = "frame-ancestors 'none'"
-	} else if config.SameOrigin {
+	if config.SameOrigin {
 		logger.Info().Log(
 			"msg", "configuring the page can only be displayed in a frame on the same origin as the page itself",
 		)
 		xfoVal = "SAMEORIGIN"
 		cspVal = "frame-ancestors 'self'"
-	} else {
+	} else if config.AllowURIs != "" {
 		logger.Info().Log(
 			"msg", "configuring the page can only be displayed in a frame on specified URIs",
 			"allow_uris", config.AllowURIs,
 		)
 		cspVal = "frame-ancestors " + config.AllowURIs
+	} else {
+		logger.Info().Log(
+			"msg", "configuring the page cannot be displayed in a frame",
+		)
+		xfoVal = "DENY"
+		cspVal = "frame-ancestors 'none'"
 	}
 
 	return func(h http.Handler) http.Handler {

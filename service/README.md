@@ -179,9 +179,12 @@ HSTS header will only be added when the value of `HSTS_MaxAge` is greater than 0
 [X-Frame-Options](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options)
 [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy)
 
+Default:  
+the page cannot be displayed in a frame.
+
 Environment variables:
 
-* `DISPLAY_IN_FRAME_Deny`: Bool type. If `true`, the page cannot be displayed in a frame.
+* `DISPLAY_IN_FRAME_NoLimit`: Bool type. If `true`, no headers added, the page should be able to be displayed in a frame without limit(depend on browser's default behavior).
 
 * `DISPLAY_IN_FRAME_SameOrigin`: Bool type. If `true`, the page can only be displayed in a frame on the same origin as the page itself.
 
