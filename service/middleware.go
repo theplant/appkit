@@ -44,6 +44,7 @@ func middleware(ctx context.Context) (server.Middleware, io.Closer, error) {
 		httpAuthMiddleware(logger),
 		corsMiddleware(logger),
 		newRelicMiddleware(logger),
+		avoidClickjackingMiddleware(logger),
 		hstsMiddleware(logger),
 		monitoring.WithMonitor(monitoring.ForceContext(ctx)),
 		errornotifier.Recover(errornotifier.ForceContext(ctx)),
@@ -308,6 +309,67 @@ func hstsMiddleware(logger log.Logger) server.Middleware {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add("Strict-Transport-Security", hstsVal)
+			h.ServeHTTP(w, r)
+		})
+	}
+}
+
+////////////////////////////////////////////////////////////
+// configure whether the page can be displayed in a frame
+// to avoid clickjacking attacks
+
+type diplayInFrameConfig struct {
+	NoLimit    bool
+	SameOrigin bool
+	// separated by spaces
+	AllowURIs string
+}
+
+func avoidClickjackingMiddleware(logger log.Logger) server.Middleware {
+	config := diplayInFrameConfig{}
+
+	err := configor.New(&configor.Config{ENVPrefix: "DISPLAY_IN_FRAME"}).Load(&config)
+	if err != nil {
+		panic(err)
+	}
+
+	if config.NoLimit {
+		logger.Info().Log(
+			"msg", "no limit on whether the page can be displayed in a frame",
+		)
+		return server.IdMiddleware
+	}
+
+	var xfoVal string
+	var cspVal string
+	if config.SameOrigin {
+		logger.Info().Log(
+			"msg", "configuring the page can only be displayed in a frame on the same origin as the page itself",
+		)
+		xfoVal = "SAMEORIGIN"
+		cspVal = "frame-ancestors 'self'"
+	} else if config.AllowURIs != "" {
+		logger.Info().Log(
+			"msg", "configuring the page can only be displayed in a frame on specified URIs",
+			"allow_uris", config.AllowURIs,
+		)
+		cspVal = "frame-ancestors " + config.AllowURIs
+	} else {
+		logger.Info().Log(
+			"msg", "configuring the page cannot be displayed in a frame",
+		)
+		xfoVal = "DENY"
+		cspVal = "frame-ancestors 'none'"
+	}
+
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if xfoVal != "" {
+				w.Header().Add("X-Frame-Options", xfoVal)
+			}
+			if cspVal != "" {
+				w.Header().Add("Content-Security-Policy", cspVal)
+			}
 			h.ServeHTTP(w, r)
 		})
 	}
