@@ -34,14 +34,6 @@ type span struct {
 	mu      sync.Mutex
 }
 
-// NOTE Could be used for integrating with other frameworks, like GORM
-func (s *span) AdjustStartTime(newStartTime time.Time) {
-	if !s.IsRecording() {
-		return
-	}
-	s.startTime = newStartTime
-}
-
 func (s *span) IsRecording() bool {
 	return s.endTime.IsZero()
 }
