@@ -17,7 +17,7 @@ type spanMeta struct {
 }
 
 type span struct {
-	parent *span
+	parentSpanID SpanID
 
 	traceID   TraceID
 	spanID    SpanID

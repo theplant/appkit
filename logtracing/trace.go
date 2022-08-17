@@ -63,10 +63,11 @@ func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Cont
 		cfg         = config.Load().(*Config)
 		idGenerator = cfg.IDGenerator
 
-		parent    = SpanFromContext(ctx)
-		traceID   TraceID
-		spanID    = idGenerator.NewSpanID()
-		isSampled bool
+		parent       = SpanFromContext(ctx)
+		parentSpanID SpanID
+		traceID      TraceID
+		spanID       = idGenerator.NewSpanID()
+		isSampled    bool
 	)
 
 	for _, op := range o {
@@ -76,6 +77,7 @@ func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Cont
 	if parent == nil {
 		traceID = idGenerator.NewTraceID()
 	} else {
+		parentSpanID = parent.spanID
 		traceID = parent.traceID
 		isSampled = parent.isSampled
 	}
@@ -100,7 +102,7 @@ func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Cont
 	}
 
 	s := span{
-		parent: parent,
+		parentSpanID: parentSpanID,
 
 		traceID:   traceID,
 		spanID:    spanID,
@@ -140,6 +142,7 @@ func EndSpan(ctx context.Context, err error) {
 	s.RecordError(err)
 	s.End()
 	LogSpan(ctx, s)
+	ExportSpan(s)
 }
 
 // If this method is called while panicing, function will record the panic into the span, and the panic is continued.
@@ -180,8 +183,8 @@ func LogSpan(ctx context.Context, s *span) {
 		keyvals = append(keyvals, "span.is_sampled", 1)
 	}
 
-	if s.parent != nil {
-		keyvals = append(keyvals, "span.parent_id", s.parent.spanID)
+	if s.parentSpanID.IsValid() {
+		keyvals = append(keyvals, "span.parent_id", s.parentSpanID)
 	}
 
 	keyvals = append(keyvals, s.keyvals...)
@@ -224,4 +227,38 @@ func errType(err interface{}) string {
 		return fmt.Sprintf("%T (%T)", c.Cause(), err)
 	}
 	return fmt.Sprintf("%T", err)
+}
+
+func ExportSpan(s *span) {
+	if s == nil || s.IsRecording() {
+		return
+	}
+
+	exp, _ := exporters.Load().(exportersMap)
+	if s.isSampled && len(exp) > 0 {
+		sd := makeSpanData(s)
+
+		for e := range exp {
+			e.ExportSpan(sd)
+		}
+	}
+}
+
+func makeSpanData(s *span) *SpanData {
+	return &SpanData{
+		ParentSpanID: s.parentSpanID,
+
+		TraceID:   s.traceID,
+		SpanID:    s.spanID,
+		Name:      s.name,
+		IsSampled: s.isSampled,
+
+		StartTime: s.startTime,
+		EndTime:   s.endTime,
+
+		Err:   s.err,
+		Panic: s.panic,
+
+		Keyvals: append(s.keyvals[:0:0], s.keyvals...),
+	}
 }
