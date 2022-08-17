@@ -70,6 +70,15 @@ func (e *exporter) ExportSpan(sd *logtracing.SpanData) {
 		ev.AddField("span.with_err", 1)
 	}
 
+	for i := 0; i < len(sd.Keyvals); i += 2 {
+		k := sd.Keyvals[i]
+		var v interface{} = "(missing)"
+		if i+1 < len(sd.Keyvals) {
+			v = sd.Keyvals[i+1]
+		}
+		ev.AddField(fmt.Sprint(k), v)
+	}
+
 	ev.AddField("msg", fmt.Sprintf("%s -> dur: %v err: %s panic: %s", sd.Name, dur, sd.Err, sd.Panic))
 	ev.SendPresampled()
 }
