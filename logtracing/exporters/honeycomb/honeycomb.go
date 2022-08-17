@@ -22,7 +22,8 @@ func NewExporter(config libhoney.Config) (*exporter, error) {
 }
 
 type exporter struct {
-	builder *libhoney.Builder
+	builder     *libhoney.Builder
+	ServiceName string
 }
 
 func (e *exporter) Close() {
@@ -36,6 +37,11 @@ func (e *exporter) ExportSpan(sd *logtracing.SpanData) {
 
 	ev := e.builder.NewEvent()
 	ev.Timestamp = sd.StartTime
+
+	if e.ServiceName != "" {
+		ev.AddField("service_name", e.ServiceName)
+	}
+
 	dur := sd.EndTime.Sub(sd.StartTime)
 
 	ev.AddField("trace.id", sd.TraceID)
