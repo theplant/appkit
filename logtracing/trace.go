@@ -144,10 +144,21 @@ func EndSpan(ctx context.Context, err error) {
 
 func LogSpan(ctx context.Context, s *span) {
 	var (
-		l       = log.ForceContext(ctx)
+		l       log.Logger
 		keyvals []interface{}
 		dur     = s.Duration()
 	)
+
+	if ctxLogger, ok := log.FromContext(ctx); ok {
+		l = ctxLogger
+	} else {
+		cfg := config.Load().(*Config)
+		if cfg.DefaultLogger != nil {
+			l = *cfg.DefaultLogger
+		} else {
+			l = log.Default()
+		}
+	}
 
 	keyvals = append(keyvals,
 		"ts", s.startTime.Format(time.RFC3339Nano),
