@@ -163,21 +163,10 @@ func RecordPanic(ctx context.Context) {
 
 func LogSpan(ctx context.Context, s *span) {
 	var (
-		l       log.Logger
+		l       = getLogger(ctx)
 		keyvals []interface{}
 		dur     = s.Duration()
 	)
-
-	if ctxLogger, ok := log.FromContext(ctx); ok {
-		l = ctxLogger
-	} else {
-		cfg := config.Load().(*Config)
-		if cfg.DefaultLogger != nil {
-			l = *cfg.DefaultLogger
-		} else {
-			l = log.Default()
-		}
-	}
 
 	keyvals = append(keyvals,
 		"ts", s.startTime.Format(time.RFC3339Nano),
@@ -224,6 +213,23 @@ func LogSpan(ctx context.Context, s *span) {
 		"msg", fmt.Sprintf("%s (%v) -> success", s.name, dur),
 	)
 	l.Info().Log(keyvals...)
+}
+
+func getLogger(ctx context.Context) log.Logger {
+	var l log.Logger
+
+	if ctxLogger, ok := log.FromContext(ctx); ok {
+		l = ctxLogger
+	} else {
+		cfg := config.Load().(*Config)
+		if cfg.DefaultLogger != nil {
+			l = *cfg.DefaultLogger
+		} else {
+			l = log.Default()
+		}
+	}
+
+	return l
 }
 
 type causer interface {
