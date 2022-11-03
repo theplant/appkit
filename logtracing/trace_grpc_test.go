@@ -7,9 +7,11 @@ import (
 	"net"
 	"testing"
 
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/theplant/appkit/logtracing/greeter"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 )
 
@@ -17,10 +19,17 @@ type greeterServer struct {
 	greeter.UnimplementedGreeterServer
 }
 
+var panicErr = errors.New("Danger!")
+
 func (s *greeterServer) SayHello(ctx context.Context, in *greeter.HelloRequest) (*greeter.HelloReply, error) {
 	if in.Name == "It" {
 		return nil, errors.New("Run away")
 	}
+
+	if in.Name == "W.W." {
+		panic(panicErr)
+	}
+
 	return &greeter.HelloReply{Message: "Hello " + in.Name}, nil
 }
 
@@ -34,14 +43,23 @@ func bufDialer(context.Context, string) (net.Conn, error) {
 	return lis.Dial()
 }
 
-func startGreeterServer() {
+func startGreeterServer(t *testing.T) {
 	lis = bufconn.Listen(bufSize)
+
+	recoveryHandler := func(p interface{}) (err error) {
+		if p != panicErr {
+			t.Fatalf("should be panic err")
+		}
+		return panicErr
+	}
 	_grpcServer = grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			UnaryServerInterceptor(),
+			grpc_recovery.UnaryServerInterceptor(grpc_recovery.WithRecoveryHandler(recoveryHandler)),
 		),
 		grpc.ChainStreamInterceptor(
 			StreamServerInterceptor(),
+			grpc_recovery.StreamServerInterceptor(grpc_recovery.WithRecoveryHandler(recoveryHandler)),
 		),
 	)
 	greeter.RegisterGreeterServer(_grpcServer, &greeterServer{})
@@ -75,7 +93,7 @@ func newHelloClient(ctx context.Context) (greeter.GreeterClient, error) {
 }
 
 func TestSayHello(t *testing.T) {
-	startGreeterServer()
+	startGreeterServer(t)
 	defer stopGreeterServer()
 
 	ctx := context.Background()
@@ -91,5 +109,11 @@ func TestSayHello(t *testing.T) {
 	_, err = greeterClient.SayHello(ctx, &greeter.HelloRequest{Name: "World"})
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	_, err = greeterClient.SayHello(ctx, &greeter.HelloRequest{Name: "W.W."})
+	status, _ := status.FromError(err)
+	if status.Message() != panicErr.Error() {
+		t.Fatalf("Should return panic err, actual: %s", status.Message())
 	}
 }
