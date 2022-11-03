@@ -19,7 +19,7 @@ type greeterServer struct {
 	greeter.UnimplementedGreeterServer
 }
 
-var panicErr = errors.New("Danger!")
+var grpcPanicErr = errors.New("Danger!")
 
 func (s *greeterServer) SayHello(ctx context.Context, in *greeter.HelloRequest) (*greeter.HelloReply, error) {
 	if in.Name == "It" {
@@ -27,7 +27,7 @@ func (s *greeterServer) SayHello(ctx context.Context, in *greeter.HelloRequest) 
 	}
 
 	if in.Name == "W.W." {
-		panic(panicErr)
+		panic(grpcPanicErr)
 	}
 
 	return &greeter.HelloReply{Message: "Hello " + in.Name}, nil
@@ -47,10 +47,10 @@ func startGreeterServer(t *testing.T) {
 	lis = bufconn.Listen(bufSize)
 
 	recoveryHandler := func(p interface{}) (err error) {
-		if p != panicErr {
+		if p != grpcPanicErr {
 			t.Fatalf("should be panic err")
 		}
-		return panicErr
+		return grpcPanicErr
 	}
 	_grpcServer = grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
@@ -113,7 +113,7 @@ func TestSayHello(t *testing.T) {
 
 	_, err = greeterClient.SayHello(ctx, &greeter.HelloRequest{Name: "W.W."})
 	status, _ := status.FromError(err)
-	if status.Message() != panicErr.Error() {
+	if status.Message() != grpcPanicErr.Error() {
 		t.Fatalf("Should return panic err, actual: %s", status.Message())
 	}
 }
