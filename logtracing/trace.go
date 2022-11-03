@@ -142,6 +142,25 @@ func EndSpan(ctx context.Context, err error) {
 	LogSpan(ctx, s)
 }
 
+// If this method is called while panicing, function will record the panic into the span, and the panic is continued.
+// 1. The function should be called before `EndSpan(ctx context.Context, err error)` or `(*span).End()`.
+// 2. The function call should be deferred.
+func RecordPanic(ctx context.Context) {
+	s := SpanFromContext(ctx)
+	if s == nil {
+		return
+	}
+
+	if !s.IsRecording() {
+		return
+	}
+
+	if recovered := recover(); recovered != nil {
+		defer panic(recovered)
+		s.RecordPanic(recovered)
+	}
+}
+
 func LogSpan(ctx context.Context, s *span) {
 	var (
 		l       = log.ForceContext(ctx)

@@ -118,6 +118,30 @@ func TestEndSpan(t *testing.T) {
 	}
 }
 
+func TestRecordPanic(t *testing.T) {
+	ctx := context.Background()
+	err := errors.New("I'm panic!")
+
+	defer func() {
+		recovered := recover()
+		if recovered != err {
+			t.Fatalf("should receive panic")
+		}
+
+		s := SpanFromContext(ctx)
+		if s.panic != err {
+			t.Fatalf("panic should be recorded in span")
+		}
+	}()
+
+	func() {
+		ctx, _ = StartSpan(ctx, "test")
+		defer RecordPanic(ctx)
+
+		panic(err)
+	}()
+}
+
 func TestTrace(t *testing.T) {
 
 	ctx := context.Background()
