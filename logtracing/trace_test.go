@@ -120,7 +120,7 @@ func TestEndSpan(t *testing.T) {
 
 func TestRecordPanic(t *testing.T) {
 	ctx := context.Background()
-	err := errors.New("I'm panic!")
+	err := errors.New("I'm the danger!")
 
 	defer func() {
 		recovered := recover()
