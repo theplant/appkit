@@ -31,7 +31,7 @@ You can append key-values to an active span with `AppendSpanKvs`:
 func DoWork(ctx context.Context) err error {
 	ctx, _ := logtracing.StartSpan(ctx, "<span.context>")
 	defer func() { logtracing.EndSpan(ctx, err) }()
-  defer RecordPanic(ctx)
+	defer RecordPanic(ctx)
 
 	logtracing.AppendSpanKVs(ctx,
 		"service", "greeter",
@@ -47,8 +47,8 @@ func DoWork(ctx context.Context) err error {
 	ctx = logtracing.ContextWithKVs(ctx, "key", "value")
 
 	ctx, _ = logtracing.StartSpan(ctx, "test")
-  defer func() { logtracing.EndSpan(ctx, err) }()
-  defer RecordPanic(ctx)
+	defer func() { logtracing.EndSpan(ctx, err) }()
+	defer RecordPanic(ctx)
 }
 ```
 
