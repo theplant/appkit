@@ -188,7 +188,7 @@ func LogSpan(ctx context.Context, s *span) {
 
 	if s.panic != nil {
 		keyvals = append(keyvals,
-			"msg", fmt.Sprintf("%s (%v) -> panic: %s (%T)", s.name, dur, s.panic, s.panic),
+			"msg", fmt.Sprintf("%s (%v) -> panic: %+v (%T)", s.name, dur, s.panic, s.panic),
 			"span.panic", s.panic,
 			"span.panic_type", errType(s.panic),
 			"span.with_panic", 1,
@@ -200,7 +200,7 @@ func LogSpan(ctx context.Context, s *span) {
 
 	if s.err != nil {
 		keyvals = append(keyvals,
-			"msg", fmt.Sprintf("%s (%v) -> error: %s (%T)", s.name, dur, s.err, s.err),
+			"msg", fmt.Sprintf("%s (%v) -> error: %+v (%T)", s.name, dur, s.err, s.err),
 			"span.err", s.err,
 			"span.err_type", errType(s.err),
 			"span.with_err", 1,
