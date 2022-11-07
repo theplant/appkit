@@ -68,6 +68,7 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 			AppendSpanKVs(ctx, "grpc.code", status.Code(err).String())
 			EndSpan(ctx, err)
 		}()
+		defer RecordPanic(ctx)
 		AppendSpanKVs(ctx, GRPCServerKVs(service, method)...)
 
 		return handler(ctx, req)
@@ -82,6 +83,7 @@ func StreamServerInterceptor() grpc.StreamServerInterceptor {
 			AppendSpanKVs(ctx, "grpc.code", status.Code(err).String())
 			EndSpan(ctx, err)
 		}()
+		defer RecordPanic(ctx)
 		AppendSpanKVs(ctx, GRPCClientKVs(service, method)...)
 
 		wrapped := grpc_middleware.WrapServerStream(stream)

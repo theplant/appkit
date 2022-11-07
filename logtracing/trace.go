@@ -142,6 +142,25 @@ func EndSpan(ctx context.Context, err error) {
 	LogSpan(ctx, s)
 }
 
+// If this method is called while panicing, function will record the panic into the span, and the panic is continued.
+// 1. The function should be called before `EndSpan(ctx context.Context, err error)` or `(*span).End()`.
+// 2. The function call should be deferred.
+func RecordPanic(ctx context.Context) {
+	s := SpanFromContext(ctx)
+	if s == nil {
+		return
+	}
+
+	if !s.IsRecording() {
+		return
+	}
+
+	if recovered := recover(); recovered != nil {
+		defer panic(recovered)
+		s.RecordPanic(recovered)
+	}
+}
+
 func LogSpan(ctx context.Context, s *span) {
 	var (
 		l       = log.ForceContext(ctx)
@@ -167,26 +186,26 @@ func LogSpan(ctx context.Context, s *span) {
 
 	keyvals = append(keyvals, s.keyvals...)
 
-	if s.err != nil {
-		keyvals = append(keyvals,
-			"msg", fmt.Sprintf("%s (%v) -> %s (%T)", s.name, dur, s.err, s.err),
-			"span.err", s.err,
-			"span.err_type", errType(s.err),
-			"span.with_err", 1,
-		)
-		l.Error().Log(keyvals...)
-		return
-	}
-
 	if s.panic != nil {
 		keyvals = append(keyvals,
-			"msg", fmt.Sprintf("%s (%v) -> panic: %s (%T)", s.name, dur, s.err, s.err),
-			"span.panic", s.panic,
-			"span.panic_type", errType(s.err),
+			"msg", fmt.Sprintf("%s (%v) -> panic: %+v (%T)", s.name, dur, s.panic, s.panic),
+			"span.panic", fmt.Sprintf("%s", s.panic),
+			"span.panic_type", errType(s.panic),
 			"span.with_panic", 1,
 			"span.with_err", 1,
 		)
 		l.Crit().Log(keyvals...)
+		return
+	}
+
+	if s.err != nil {
+		keyvals = append(keyvals,
+			"msg", fmt.Sprintf("%s (%v) -> error: %+v (%T)", s.name, dur, s.err, s.err),
+			"span.err", s.err.Error(),
+			"span.err_type", errType(s.err),
+			"span.with_err", 1,
+		)
+		l.Error().Log(keyvals...)
 		return
 	}
 

@@ -15,7 +15,7 @@ func TestTraceFunc(t *testing.T) {
 		return testErr
 	}
 
-	err := TraceFunc(context.Background(), "test", fn)
+	err := TraceFunc(context.Background(), "fn", fn)
 	if err != testErr {
 		t.Fatalf("err should be test error")
 	}
@@ -24,7 +24,7 @@ func TestTraceFunc(t *testing.T) {
 		t.Fatalf("span should be in context")
 	}
 
-	if s.name != "test" {
+	if s.name != "fn" {
 		t.Fatalf("span context should be the same as the name")
 	}
 
@@ -35,4 +35,26 @@ func TestTraceFunc(t *testing.T) {
 	if s.err != testErr {
 		t.Fatalf("err should be test error")
 	}
+
+	panicErr := errors.New("I'm the danger!")
+	panicerFN := func(ctx context.Context) error {
+		s = SpanFromContext(ctx)
+
+		panic(panicErr)
+	}
+
+	defer func() {
+		recovered := recover()
+		if recovered != panicErr {
+			t.Fatalf("should receive panic")
+		}
+
+		if s.panic != panicErr {
+			t.Fatalf("panic should be recorded in span")
+		}
+	}()
+
+	func() {
+		err = TraceFunc(context.Background(), "panicerFN", panicerFN)
+	}()
 }
