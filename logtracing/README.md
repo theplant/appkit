@@ -1,4 +1,4 @@
-****# logtracing
+# logtracing
 
 This package is a toolkit for log-based tracing. It provides several APIs for adding traces for the application and logging them in a standard format.
 
