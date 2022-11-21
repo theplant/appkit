@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/theplant/appkit/log"
 	"github.com/theplant/testingutils/fatalassert"
@@ -220,4 +221,10 @@ func TestGetLogger(t *testing.T) {
 	ctxLogger := log.Default().With("name", "ctx")
 	ctx := log.Context(context.Background(), ctxLogger)
 	fatalassert.Equal(t, ctxLogger, getLogger((ctx)))
+}
+
+func TestWithStartTime(t *testing.T) {
+	ti := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
+	_, s := StartSpan(context.Background(), "test", WithStartTime(ti))
+	fatalassert.Equal(t, s.startTime, ti)
 }
