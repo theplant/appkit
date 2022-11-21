@@ -57,19 +57,6 @@ func (e *exporter) ExportSpan(sd *logtracing.SpanData) {
 		ev.AddField("span.parent_id", sd.ParentSpanID)
 	}
 
-	if sd.Err != nil {
-		ev.AddField("span.err", sd.Err)
-		ev.AddField("span.err_type", errType(sd.Err))
-		ev.AddField("span.with_err", 1)
-	}
-
-	if sd.Panic != nil {
-		ev.AddField("span.panic", sd.Panic)
-		ev.AddField("span.panic_type", errType(sd.Panic))
-		ev.AddField("span.with_panic", 1)
-		ev.AddField("span.with_err", 1)
-	}
-
 	for i := 0; i < len(sd.Keyvals); i += 2 {
 		k := sd.Keyvals[i]
 		var v interface{} = "(missing)"
@@ -79,7 +66,23 @@ func (e *exporter) ExportSpan(sd *logtracing.SpanData) {
 		ev.AddField(fmt.Sprint(k), v)
 	}
 
-	ev.AddField("msg", fmt.Sprintf("%s -> dur: %v err: %s panic: %s", sd.Name, dur, sd.Err, sd.Panic))
+	if sd.Panic != nil {
+		ev.AddField("msg", fmt.Sprintf("%s (%v) -> panic: %+v (%T)", sd.Name, dur, sd.Panic, sd.Panic))
+		ev.AddField("span.panic", fmt.Sprintf("%s", sd.Panic))
+		ev.AddField("span.panic_type", errType(sd.Panic))
+		ev.AddField("span.with_panic", 1)
+		ev.AddField("span.with_err", 1)
+	} else if sd.Err != nil {
+		ev.AddField("msg", fmt.Sprintf("%s (%v) -> error: %+v (%T)", sd.Name, dur, sd.Err, sd.Err))
+		ev.AddField("span.err", sd.Err.Error())
+		ev.AddField("span.err_type", errType(sd.Err))
+		ev.AddField("span.with_err", 1)
+	} else {
+		ev.AddField(
+			"msg", fmt.Sprintf("%s (%v) -> success", sd.Name, dur),
+		)
+	}
+
 	ev.SendPresampled()
 }
 
