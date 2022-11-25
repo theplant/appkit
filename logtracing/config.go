@@ -3,13 +3,10 @@ package logtracing
 import (
 	"sync"
 	"sync/atomic"
-
-	"github.com/theplant/appkit/log"
 )
 
 // Config represents the global tracing configuration.
 type Config struct {
-	DefaultLogger  *log.Logger
 	DefaultSampler Sampler
 	IDGenerator    IDGenerator
 }
@@ -20,9 +17,6 @@ func ApplyConfig(cfg Config) {
 	configWriteMu.Lock()
 	defer configWriteMu.Unlock()
 	c := *config.Load().(*Config)
-	if cfg.DefaultLogger != nil {
-		c.DefaultLogger = cfg.DefaultLogger
-	}
 	if cfg.DefaultSampler != nil {
 		c.DefaultSampler = cfg.DefaultSampler
 	}

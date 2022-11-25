@@ -235,12 +235,7 @@ func getLogger(ctx context.Context) log.Logger {
 	if ctxLogger, ok := log.FromContext(ctx); ok {
 		l = ctxLogger
 	} else {
-		cfg := config.Load().(*Config)
-		if cfg.DefaultLogger != nil {
-			l = *cfg.DefaultLogger
-		} else {
-			l = log.Default()
-		}
+		l = log.Default()
 	}
 
 	return l

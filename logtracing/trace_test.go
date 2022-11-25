@@ -212,12 +212,6 @@ func TestChildrenAreSampledAsParent(t *testing.T) {
 func TestGetLogger(t *testing.T) {
 	fatalassert.NotNil(t, getLogger(context.Background()).Logger)
 
-	defaultLogger := log.Default().With("name", "default")
-	ApplyConfig(Config{
-		DefaultLogger: &defaultLogger,
-	})
-	fatalassert.Equal(t, defaultLogger, getLogger(context.Background()))
-
 	ctxLogger := log.Default().With("name", "ctx")
 	ctx := log.Context(context.Background(), ctxLogger)
 	fatalassert.Equal(t, ctxLogger, getLogger((ctx)))
