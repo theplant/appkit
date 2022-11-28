@@ -153,7 +153,7 @@ You can export span data to an expected destination such as Honeycomb by registe
 2. Initialize and register your exporter:
     ```Go
     exporter := <your exporter>
-    logtracing.RegisterExporter(expoter)
+    logtracing.RegisterExporter(exporter)
     ```
 
 When you register exporters, `logtracing` will pass sampled spans to the exporters after logging.
