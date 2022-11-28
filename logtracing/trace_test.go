@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/theplant/appkit/log"
+	"github.com/theplant/testingutils/fatalassert"
 )
 
 func BenchmarkTracing(b *testing.B) {
@@ -240,4 +242,10 @@ func TestChildrenAreSampledAsParent(t *testing.T) {
 	if !cspan.isSampled {
 		t.Fatalf("child span should be sampled")
 	}
+}
+
+func TestWithStartTime(t *testing.T) {
+	ti := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
+	_, s := StartSpan(context.Background(), "test", WithStartTime(ti))
+	fatalassert.Equal(t, s.startTime, ti)
 }

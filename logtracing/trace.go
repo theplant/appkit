@@ -46,7 +46,8 @@ func contextWithSpan(parent context.Context, s *span) context.Context {
 }
 
 type StartOptions struct {
-	Sampler Sampler
+	Sampler   Sampler
+	StartTime time.Time
 }
 
 type StartOption func(*StartOptions)
@@ -54,6 +55,12 @@ type StartOption func(*StartOptions)
 func WithSampler(sampler Sampler) StartOption {
 	return func(o *StartOptions) {
 		o.Sampler = sampler
+	}
+}
+
+func WithStartTime(t time.Time) StartOption {
+	return func(o *StartOptions) {
+		o.StartTime = t
 	}
 }
 
@@ -68,6 +75,7 @@ func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Cont
 		traceID      TraceID
 		spanID       = idGenerator.NewSpanID()
 		isSampled    bool
+		startTime    time.Time
 	)
 
 	for _, op := range o {
@@ -101,6 +109,12 @@ func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Cont
 		})
 	}
 
+	if opts.StartTime.IsZero() {
+		startTime = time.Now()
+	} else {
+		startTime = opts.StartTime
+	}
+
 	s := span{
 		parentSpanID: parentSpanID,
 
@@ -109,7 +123,7 @@ func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Cont
 		name:      name,
 		isSampled: isSampled,
 
-		startTime: time.Now(),
+		startTime: startTime,
 	}
 
 	ctxKVs := KVsFromContext(ctx)
