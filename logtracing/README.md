@@ -140,10 +140,49 @@ For the server requests:
 For internal functions:
 - `span.role`: `internal`
 
+## Export span data
+
+You can export span data to an expected destination such as Honeycomb by registering an exporter.
+
+1. Implement the `Exporter` interface:
+    ```Go
+    type Exporter interface {
+    	ExportSpan(s *SpanData)
+    }
+    ```
+2. Initialize and register your exporter:
+    ```Go
+    exporter := <your exporter>
+    logtracing.RegisterExporter(exporter)
+    ```
+
+When you register exporters, `logtracing` will pass sampled spans to the exporters after logging.
+
+### Honeycomb exporter
+
+You can use this exporter to send spans to Honeycomb. The sent events are in the same format as the logged events.
+
+1. Import the package:
+    ```Go
+    import github.com/theplant/appkit/logtracing/exporters/honeycomb
+    ```
+2. Initialize the exporter:
+    ````Go
+    exporter, err := honeycomb.NewExporter(libhoney.Config{
+    	WriteKey:     "mock",
+    	Dataset:      "mock",
+    	Transmission: mockSender,
+    })
+    ```
+2. Register the exporter:
+    ```Go
+    logtracing.RegisterExporter(expoter)
+    ```
+
 ## How to migrate from `util/trace.go`
 
 1. Use `logtracing.TraceFunc` to replace `util.Lt`
-2. use `logtracing.AppendSpanKVs` to replace `util.AppendKVs`
-3. use `logtracing.TraceHTTPRequest` to replace `util.LtRequest`
-4. use `logtracing.HTTPTransport` to replace `util.LtTransport`
-5. use `logtracing.XMLRPCClientKVs` to replace `util.XMLRpcKVs`
+2. Use `logtracing.AppendSpanKVs` to replace `util.AppendKVs`
+3. Use `logtracing.TraceHTTPRequest` to replace `util.LtRequest`
+4. Use `logtracing.HTTPTransport` to replace `util.LtTransport`
+5. Use `logtracing.XMLRPCClientKVs` to replace `util.XMLRpcKVs`

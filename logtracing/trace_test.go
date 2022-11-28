@@ -9,6 +9,8 @@ import (
 )
 
 func BenchmarkTracing(b *testing.B) {
+	RegisterExporter(&mockedExporter{})
+
 	ctx := log.Context(context.Background(), log.Default())
 	ctx = ContextWithKVs(ctx, "key", "value")
 	b.ResetTimer()
@@ -61,8 +63,8 @@ func TestStartSpanWithoutParent(t *testing.T) {
 		t.Fatalf("span id should not be blank")
 	}
 
-	if s.parent != nil {
-		t.Fatalf("parent span should be nil ")
+	if s.parentSpanID.IsValid() {
+		t.Fatalf("parent span should be zero")
 	}
 
 	sInCtx := SpanFromContext(ctx)
@@ -89,7 +91,7 @@ func TestStartSpanWithParent(t *testing.T) {
 	if len(secondLevelS.spanID) == 0 {
 		t.Fatalf("span id should not be blank")
 	}
-	if secondLevelS.parent != topLevelS {
+	if secondLevelS.parentSpanID != topLevelS.spanID {
 		t.Fatalf("parent span should be equal to parent")
 	}
 
@@ -140,6 +142,39 @@ func TestRecordPanic(t *testing.T) {
 
 		panic(err)
 	}()
+}
+
+type mockedExporter struct {
+	LastSpanData *SpanData
+}
+
+func (e *mockedExporter) ExportSpan(sd *SpanData) {
+	e.LastSpanData = sd
+}
+
+func TestExportSpan(t *testing.T) {
+	exporter := &mockedExporter{}
+	RegisterExporter(exporter)
+
+	ctx := context.Background()
+	ctx, s := StartSpan(ctx, "test")
+	AppendSpanKVs(ctx, "k", "v1")
+
+	err := errors.New("test error")
+
+	EndSpan(ctx, err)
+
+	exportedSpanData := exporter.LastSpanData
+	if exportedSpanData == nil {
+		t.Fatal("exported span data should not be nil")
+	}
+	if exportedSpanData.SpanID != s.spanID {
+		t.Fatal("exported span ID should be equal to the original span")
+	}
+	exportedSpanData.Keyvals[1] = "v2"
+	if s.keyvals[1] != "v1" {
+		t.Fatal("the original span keyvals should not be modified")
+	}
 }
 
 func TestTrace(t *testing.T) {
