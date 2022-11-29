@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	gobrake "github.com/airbrake/gobrake/v4"
+	gobrake "github.com/airbrake/gobrake/v5"
 	"github.com/theplant/appkit/log"
 )
 
@@ -71,7 +71,7 @@ func NewAirbrakeNotifier(c AirbrakeConfig) (Notifier, io.Closer, error) {
 		ProjectId:     c.ProjectID,
 		ProjectKey:    c.Token,
 		Environment:   c.Environment,
-		KeysBlacklist: c.KeysBlocklist,
+		KeysBlocklist: c.KeysBlocklist,
 	})
 
 	return &airbrakeNotifier{notifier: notifier}, notifier, nil
