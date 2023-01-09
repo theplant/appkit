@@ -16,10 +16,10 @@ Inside a function, you can use these three APIs to track it:
 - `RecordPanic(context.Context)` to record the panic into the span
 
 ```
-func DoWork(ctx context.Context) err error {
+func DoWork(ctx context.Context) (err error) {
 	ctx, _ := logtracing.StartSpan(ctx, "<span.context>")
 	defer func() { logtracing.EndSpan(ctx, err) }()
-	defer RecordPanic(ctx)
+	defer logtracing.RecordPanic(ctx)
 }
 ```
 
@@ -28,10 +28,10 @@ It will create a new span, record the error, and log the span with the logger in
 You can append key-values to an active span with `AppendSpanKvs`:
 
 ```
-func DoWork(ctx context.Context) err error {
+func DoWork(ctx context.Context) (err error) {
 	ctx, _ := logtracing.StartSpan(ctx, "<span.context>")
 	defer func() { logtracing.EndSpan(ctx, err) }()
-	defer RecordPanic(ctx)
+	defer logtracing.RecordPanic(ctx)
 
 	logtracing.AppendSpanKVs(ctx,
 		"service", "greeter",
@@ -42,13 +42,13 @@ func DoWork(ctx context.Context) err error {
 If you want to append key-values to all spans, you can append the key-values to the context with `ContextWithKVs`:
 
 ```
-func DoWork(ctx context.Context) err error {
+func DoWork(ctx context.Context) (err error) {
 	// all the spans within this context will contain `"key": "value"`
 	ctx = logtracing.ContextWithKVs(ctx, "key", "value")
 
 	ctx, _ = logtracing.StartSpan(ctx, "test")
 	defer func() { logtracing.EndSpan(ctx, err) }()
-	defer RecordPanic(ctx)
+	defer logtracing.RecordPanic(ctx)
 }
 ```
 
