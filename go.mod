@@ -8,7 +8,7 @@ require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/go-kit/kit v0.12.1-0.20220826005032-a7ba4fa4e289
 	github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
-	github.com/golang/protobuf v1.5.2
+	github.com/golang/protobuf v1.5.3
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/sessions v1.2.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
@@ -27,8 +27,8 @@ require (
 	github.com/theplant/testingutils v0.0.0-20190603093022-26d8b4d95c61
 	github.com/uber/jaeger-client-go v2.29.1+incompatible
 	golang.org/x/crypto v0.14.0
-	google.golang.org/grpc v1.53.0
-	google.golang.org/protobuf v1.28.1
+	google.golang.org/grpc v1.56.3
+	google.golang.org/protobuf v1.30.0
 )
 
 require (
@@ -69,7 +69,7 @@ require (
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
+	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/square/go-jose.v2 v2.3.1 // indirect
