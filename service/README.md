@@ -142,6 +142,7 @@ the parameter will be set to `SERVICE_NAME`.
 * `AIRBRAKE_PROJECTID`
 * `AIRBRAKE_TOKEN`
 * `AIRBRAKE_ENVIRONMENT`
+* `AIRBRAKE_FILTERS`
 
 If notifier can't be created due to blank project ID or token, a
 logging notifier will be used instead.
