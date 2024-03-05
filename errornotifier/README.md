@@ -48,6 +48,17 @@ type AppConfig struct {
 And set appropriate values for this struct as part of your application
 configuration.
 
+Add filters to appConfig.Airbrake:
+
+```
+appConfig.Airbrake.Filters = []interface{}{
+    regexp.MustCompile("secret"),
+    "context canceled",
+}
+```
+
+Or use `os.Setenv("AIRBRAKE_FILTERS", "['operation was canceled', 'context canceled']")`
+
 Create an Airbrake error notifier:
 
 ```

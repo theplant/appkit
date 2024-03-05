@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"runtime/debug"
+	"strings"
 
-	gobrake "github.com/airbrake/gobrake/v5"
+	"github.com/airbrake/gobrake/v5"
 	"github.com/theplant/appkit/log"
 )
 
@@ -42,6 +44,7 @@ type AirbrakeConfig struct {
 	Environment string `default:"dev"`
 
 	KeysBlocklist []interface{}
+	Filters       []interface{}
 }
 
 var defaultKeysBlocklist = []interface{}{
@@ -72,6 +75,25 @@ func NewAirbrakeNotifier(c AirbrakeConfig) (Notifier, io.Closer, error) {
 		ProjectKey:    c.Token,
 		Environment:   c.Environment,
 		KeysBlocklist: c.KeysBlocklist,
+	})
+
+	notifier.AddFilter(func(notice *gobrake.Notice) *gobrake.Notice {
+		message := notice.Errors[0].Message
+		for _, filter := range c.Filters {
+			switch filter := filter.(type) {
+			case string:
+				if strings.Contains(message, filter) {
+					return nil
+				}
+			case *regexp.Regexp:
+				if filter.MatchString(message) {
+					return nil
+				}
+			default:
+				panic(fmt.Errorf("unsupported filter key type: %T", filter))
+			}
+		}
+		return notice
 	})
 
 	return &airbrakeNotifier{notifier: notifier}, notifier, nil
