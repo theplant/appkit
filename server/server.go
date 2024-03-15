@@ -75,6 +75,7 @@ func GoListenAndServe(config Config, logger log.Logger, handler http.Handler) io
 			"addr", config.Addr,
 			"serve_us", sinceStart(),
 		)
+		s.SetKeepAlivesEnabled(false)
 		return s.Shutdown(context.Background())
 	})
 
