@@ -2,8 +2,6 @@ module github.com/theplant/appkit
 
 go 1.21
 
-toolchain go1.22.3
-
 require (
 	github.com/airbrake/gobrake/v5 v5.6.1
 	github.com/aws/aws-sdk-go v1.40.45
@@ -41,11 +39,9 @@ require (
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/facebookgo/limitgroup v0.0.0-20150612190941-6abd8d71ec01 // indirect
 	github.com/facebookgo/muster v0.0.0-20150708232844-fd3d7953fd52 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.1 // indirect
 	github.com/go-kit/log v0.2.0 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
-	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
@@ -55,7 +51,6 @@ require (
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/hashicorp/vault/sdk v0.1.13 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jjeffery/kv v0.8.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -65,7 +60,6 @@ require (
 	github.com/lib/pq v1.10.7 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
@@ -79,6 +73,5 @@ require (
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
-	gopkg.in/square/go-jose.v2 v2.3.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
