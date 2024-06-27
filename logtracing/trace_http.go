@@ -28,6 +28,7 @@ func TraceHTTPRequest(do func(*http.Request) (*http.Response, error), baseName s
 	if err == nil {
 		AppendSpanKVs(ctx,
 			"http.status", resp.Status,
+			"http.status_code", resp.StatusCode,
 		)
 	}
 	return resp, err
@@ -73,8 +74,9 @@ func clientIP(r *http.Request) string {
 	return ""
 }
 
-func HTTPServerResponseKVs(status string) []interface{} {
+func HTTPServerResponseKVs(resp *http.Response) []interface{} {
 	return []interface{}{
-		"http.status", status,
+		"http.status", resp.Status,
+		"http.status_code", resp.StatusCode,
 	}
 }
