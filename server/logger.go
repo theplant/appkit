@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -13,10 +14,31 @@ import (
 	"github.com/theplant/appkit/logtracing"
 )
 
+const traceHeaderKey = "traceparent"
+
 // Will absorb panics in earlier Middleware. Times the request and logs the result.
 func LogRequest(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		ctx, span := logtracing.StartSpan(r.Context(), fmt.Sprintf("%s %s", r.Method, r.URL.Path))
+		var opts []logtracing.StartOption
+		trace := r.Header.Get(traceHeaderKey)
+		if len(trace) > 0 {
+			ts := strings.Split(trace, "-")
+			if len(ts) == 4 {
+				dt, err := hex.DecodeString(ts[1])
+				if err == nil {
+					var traceID logtracing.TraceID
+					copy(traceID[:], dt)
+					opts = append(opts, logtracing.WithTraceID(traceID))
+				}
+				ds, err := hex.DecodeString(ts[2])
+				if err == nil {
+					var spanID logtracing.SpanID
+					copy(spanID[:], ds)
+					opts = append(opts, logtracing.WithParentSpanID(spanID))
+				}
+			}
+		}
+		ctx, span := logtracing.StartSpan(r.Context(), fmt.Sprintf("%s %s", r.Method, r.URL.Path), opts...)
 		r = r.WithContext(ctx)
 		span.AppendKVs(
 			logtracing.HTTPServerKVs(r)...,

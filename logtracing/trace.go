@@ -46,8 +46,10 @@ func contextWithSpan(parent context.Context, s *span) context.Context {
 }
 
 type StartOptions struct {
-	Sampler   Sampler
-	StartTime time.Time
+	Sampler      Sampler
+	StartTime    time.Time
+	TraceID      TraceID
+	ParentSpanID SpanID
 }
 
 type StartOption func(*StartOptions)
@@ -61,6 +63,18 @@ func WithSampler(sampler Sampler) StartOption {
 func WithStartTime(t time.Time) StartOption {
 	return func(o *StartOptions) {
 		o.StartTime = t
+	}
+}
+
+func WithTraceID(id TraceID) StartOption {
+	return func(o *StartOptions) {
+		o.TraceID = id
+	}
+}
+
+func WithParentSpanID(id SpanID) StartOption {
+	return func(o *StartOptions) {
+		o.ParentSpanID = id
 	}
 }
 
@@ -83,7 +97,14 @@ func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Cont
 	}
 
 	if parent == nil {
-		traceID = idGenerator.NewTraceID()
+		if opts.ParentSpanID.IsValid() {
+			parentSpanID = opts.ParentSpanID
+		}
+		if opts.TraceID.IsValid() {
+			traceID = opts.TraceID
+		} else {
+			traceID = idGenerator.NewTraceID()
+		}
 	} else {
 		parentSpanID = parent.spanID
 		traceID = parent.traceID
