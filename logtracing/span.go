@@ -74,6 +74,10 @@ func (s *span) AppendKVs(keyvals ...interface{}) {
 	s.keyvals = append(s.keyvals, keyvals...)
 }
 
+func (s *span) TraceID() string {
+	return s.traceID.String()
+}
+
 func (s *span) meta() spanMeta {
 	return spanMeta{
 		TraceID:   s.traceID,
