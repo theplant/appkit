@@ -34,6 +34,14 @@ type span struct {
 	mu      sync.Mutex
 }
 
+func (s *span) TraceID() TraceID {
+	return s.traceID
+}
+
+func (s *span) SpanID() SpanID {
+	return s.spanID
+}
+
 func (s *span) IsRecording() bool {
 	return s.endTime.IsZero()
 }
