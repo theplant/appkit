@@ -30,7 +30,7 @@ func serviceContext() (context.Context, io.Closer) {
 
 	vault, ctx := installVault(ctx, logger, cfg.Authn)
 
-	ctx = installAWSSession(ctx, logger, cfg.AWSPath, vault)
+	ctx = installAWSConfig(ctx, logger, cfg.AWSPath, vault)
 
 	_, mC, ctx := installMonitor(ctx, logger, serviceName, vault)
 
@@ -187,17 +187,17 @@ func installVault(ctx context.Context, l log.Logger, config vault.Config) (*vaul
 	return v, vault.Context(ctx, v)
 }
 
-func installAWSSession(ctx context.Context, l log.Logger, awsPath string, vault *vault.Client) context.Context {
+func installAWSConfig(ctx context.Context, l log.Logger, awsPath string, vault *vault.Client) context.Context {
 
 	var client *api.Client
 	if vault != nil {
 		client = vault.Client
 	}
 
-	awsSession, err := aws.NewSession(l, client, awsPath)
+	awsCfg, err := aws.NewConfig(ctx, l, client, awsPath)
 	if err != nil {
 		panic(err)
 	}
 
-	return aws.Context(ctx, awsSession)
+	return aws.Context(ctx, awsCfg)
 }

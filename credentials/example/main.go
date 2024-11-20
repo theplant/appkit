@@ -1,9 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/jinzhu/configor"
 	"github.com/theplant/appkit/credentials"
 	"github.com/theplant/appkit/credentials/aws"
@@ -31,13 +32,13 @@ func main() {
 		fmt.Println(err)
 	}
 
-	session, err := aws.NewSession(logger, vault.Client, config.AWSPath)
+	cfg, err := aws.NewConfig(context.TODO(), logger, vault.Client, config.AWSPath)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	svc := sts.New(session)
-	result, err := svc.GetCallerIdentity(nil)
+	svc := sts.NewFromConfig(cfg)
+	result, err := svc.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
 
 	fmt.Println(err, result)
 }

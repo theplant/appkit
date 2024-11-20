@@ -9,7 +9,7 @@ running on different platforms.
   on k8s. This will automatically renew Vault and AWS credetials as
   they get close to expiring.
 
-* Otherwise use AWS session management
+* Otherwise use AWS configuration management
 
 ## Local Development
 
@@ -49,13 +49,13 @@ if err != nil {
 	// ...
 }
 
-session, err := aws.NewSession(logger, vault, config.AWSPath)
+cfg, err := aws.NewConfig(context.TODO(), logger, vault.Client, config.AWSPath)
 if err != nil {
 	// ...
 }
 
-svc := sts.New(session)
-result, err := svc.GetCallerIdentity(nil)
+svc := sts.NewFromConfig(cfg)
+result, err := svc.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
 // ...
 ```
 
