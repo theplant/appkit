@@ -49,13 +49,13 @@ if err != nil {
 	// ...
 }
 
-cfg, err := aws.NewConfig(context.TODO(), logger, vault.Client, config.AWSPath)
+cfg, err := aws.NewConfig(ctx, logger, vault.Client, config.AWSPath)
 if err != nil {
 	// ...
 }
 
 svc := sts.NewFromConfig(cfg)
-result, err := svc.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
+result, err := svc.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 // ...
 ```
 
