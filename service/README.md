@@ -17,7 +17,7 @@ passed to the function:
 
 * [Vault Client](../credentials/vault)
 
-* [AWS Session](../credentials/aws)
+* [AWS Config](../credentials/aws)
 
 Most of these are also made available via middleware, and *should be
 accessed via the HTTP request context instead*.
@@ -44,7 +44,7 @@ In request-processing order:
 7. Sending request information to New Relic
 8. CORS handling
 9. HTTP Basic Authentication
-10. Adding AWS session to request context
+10. Adding AWS config to request context
 
 # Configuration
 
@@ -92,7 +92,7 @@ Environment variables:
   [`Access-Control-Allow-Headers`](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#access-control-allow-headers)
   HTTP header.
 
-## Vault/AWS Session
+## Vault/AWS Config
     
 Environment variables:
     

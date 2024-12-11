@@ -1,12 +1,12 @@
 package aws
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/hashicorp/vault/api"
 	"github.com/pkg/errors"
 	"github.com/theplant/appkit/credentials/vault"
@@ -14,9 +14,8 @@ import (
 	"github.com/theplant/appkit/log"
 )
 
+// vaultProvider implements `github.com/aws/aws-sdk-go-v2/aws.CredentialsProvider`
 type vaultProvider struct {
-	credentials.Expiry
-
 	vault *api.Client
 
 	path string
@@ -24,18 +23,13 @@ type vaultProvider struct {
 	logger log.Logger
 }
 
-// Retrieve is half of the `github.com/aws/aws/credentials.Provider`
-// interface.
-//
-// IsExpired (the other half) is implemented via credentials.Expiry
-// and `SetExpiration`.
-func (v *vaultProvider) Retrieve() (credentials.Value, error) {
+func (v *vaultProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
 	v.logger.Debug().Log("msg", "renewing aws credentials")
 
 	s, err := v.vault.Logical().Read(v.path)
 
 	if err != nil {
-		return credentials.Value{}, errors.Wrap(err, "error renewing aws credentials via vault")
+		return aws.Credentials{}, errors.Wrap(err, "error renewing aws credentials via vault")
 	}
 
 	l := v.logger.With("request_id", s.RequestID)
@@ -44,31 +38,32 @@ func (v *vaultProvider) Retrieve() (credentials.Value, error) {
 
 	expiry, err := s.TokenTTL()
 	if err != nil {
-		return credentials.Value{}, errors.Wrap(err, "error calculating credentials ttl")
+		return aws.Credentials{}, errors.Wrap(err, "error calculating credentials ttl")
 	}
-
-	v.SetExpiration(time.Now().Add(expiry), 0)
+	expireAt := time.Now().Add(expiry)
 
 	accessKey, err := validate(s.Data, "access_key", nil)
 	secretKey, err := validate(s.Data, "secret_key", err)
 	sessionToken, err := validate(s.Data, "security_token", err)
 
 	if err != nil {
-		return credentials.Value{}, errors.Wrap(err, "vault data doesn't contain valid credentials")
+		return aws.Credentials{}, errors.Wrap(err, "vault data doesn't contain valid credentials")
 	}
 
 	l.Info().Log(
-		"msg", fmt.Sprintf("renewed aws credentials, lease expires at %s", time.Now().Add(expiry)),
+		"msg", fmt.Sprintf("renewed aws credentials, lease expires at %s", expireAt),
 		"lease_id", s.LeaseID,
 		"lease_duration", s.LeaseDuration,
 		"renewable", s.Renewable,
 	)
 
-	return credentials.Value{
+	return aws.Credentials{
 		AccessKeyID:     accessKey,
 		SecretAccessKey: secretKey,
 		SessionToken:    sessionToken,
-		ProviderName:    "VaultProvider",
+		Source:          "VaultProvider",
+		CanExpire:       true,
+		Expires:         expireAt,
 	}, nil
 }
 
@@ -80,37 +75,27 @@ func validate(m map[string]interface{}, key string, err error) (string, error) {
 	return s, nil
 }
 
-func NewSession(logger log.Logger, vault *api.Client, path string) (*session.Session, error) {
+func NewConfig(ctx context.Context, logger log.Logger, vault *api.Client, path string) (aws.Config, error) {
 	logger = logger.With(
 		"context", "appkit/credentials/aws",
 		"aws_secret_path", path,
 	)
 
+	var opts []func(*config.LoadOptions) error
+
 	if vault != nil {
 		logger.Info().Log(
-			"msg", "using vault-backed aws session",
+			"msg", "with vault-backed credentials provider",
 		)
 
-		config := aws.NewConfig().WithCredentials(
-			credentials.NewCredentials(
-				&vaultProvider{
-					vault:  vault,
-					path:   path,
-					logger: logger,
-				}))
-
-		s, err := session.NewSessionWithOptions(session.Options{
-			Config: *config,
-		})
-
-		if err != nil {
-			return nil, errors.Wrap(err, "error creating aws session")
-		}
-
-		return s, nil
+		opts = append(opts, config.WithCredentialsProvider(&vaultProvider{
+			vault:  vault,
+			path:   path,
+			logger: logger,
+		}))
 	}
 
-	logger.Info().Log("msg", "using default aws session configuration")
+	logger.Info().Log("msg", "loading aws config")
 
-	return session.NewSession()
+	return config.LoadDefaultConfig(ctx, opts...)
 }

@@ -9,14 +9,14 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/goji/httpauth"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/jinzhu/configor"
 	newrelic "github.com/newrelic/go-agent"
 	"github.com/pkg/errors"
 	"github.com/rs/cors"
-	"github.com/theplant/appkit/credentials/aws"
+	kitaws "github.com/theplant/appkit/credentials/aws"
 	"github.com/theplant/appkit/errornotifier"
 	"github.com/theplant/appkit/log"
 	"github.com/theplant/appkit/monitoring"
@@ -40,7 +40,7 @@ func middleware(ctx context.Context) (server.Middleware, io.Closer, error) {
 	}
 
 	return server.Compose(
-		withAWSSession(aws.ForceContext(ctx)),
+		withAWSConfig(kitaws.ForceContext(ctx)),
 		httpAuthMiddleware(logger),
 		corsMiddleware(logger),
 		newRelicMiddleware(logger),
@@ -259,12 +259,12 @@ func httpAuthMiddleware(logger log.Logger) server.Middleware {
 }
 
 ////////////////////////////////////////////////////////////
-// AWS Session in request context
+// AWS Config in request context
 
-func withAWSSession(s *session.Session) server.Middleware {
+func withAWSConfig(cfg aws.Config) server.Middleware {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			h.ServeHTTP(w, r.WithContext(aws.Context(r.Context(), s)))
+			h.ServeHTTP(w, r.WithContext(kitaws.Context(r.Context(), cfg)))
 		})
 	}
 }
