@@ -2,8 +2,6 @@ module github.com/theplant/appkit
 
 go 1.23.0
 
-toolchain go1.23.7
-
 require (
 	github.com/airbrake/gobrake/v5 v5.6.1
 	github.com/aws/aws-sdk-go-v2 v1.32.5
