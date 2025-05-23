@@ -45,7 +45,7 @@ func testServer(t *testing.T, port string) {
 		return nil
 	})
 
-	<-time.After(100 * time.Millisecond)
+	<-time.After(200 * time.Millisecond)
 
 	_, err := http.Get("http://localhost:" + port)
 

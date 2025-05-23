@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/theplant/appkit/contexts"
@@ -57,6 +58,13 @@ func LogRequest(h http.Handler) http.Handler {
 			span.AppendKVs(
 				"http.status", status,
 			)
+			if contentLength := rw.Header().Get("Content-Length"); contentLength != "" {
+				if length, err := strconv.ParseUint(contentLength, 10, 64); err == nil {
+					span.AppendKVs(
+						"response.content_length", length,
+					)
+				}
+			}
 
 			// NOTE for compatibility
 			span.End()
