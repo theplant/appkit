@@ -55,7 +55,7 @@ func TestLogRequest(t *testing.T) {
 		LogRequest,
 	)(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		_, span := logtracing.StartSpan(r.Context(), "")
-		if span.TraceID() != traceID {
+		if span.TraceID().String() != traceID {
 			t.Errorf("traceID should be: %s, but got: %s", traceID, span.TraceID())
 		}
 	}))
