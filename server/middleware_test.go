@@ -16,7 +16,7 @@ func wrapper(label string) Middleware {
 	}
 }
 
-func ExampleCompositionOrder() {
+func ExampleCompose_compositionOrder() {
 
 	handler := Compose(
 		wrapper("top"),

@@ -39,7 +39,7 @@ func TestInvalidSecretBoxKey(t *testing.T) {
 	}
 }
 
-func ExampleSecretBox_Bytes() {
+func ExampleSecretBox_bytes() {
 	message := "hello world"
 
 	fmt.Println(message)
@@ -61,7 +61,7 @@ func ExampleSecretBox_Bytes() {
 	// hello world
 }
 
-func ExampleSecretBox_String() {
+func ExampleSecretBox_string() {
 	message := "hello world"
 
 	fmt.Println(message)
