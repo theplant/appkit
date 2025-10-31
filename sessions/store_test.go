@@ -12,7 +12,7 @@ import (
 	"github.com/theplant/appkit/sessions"
 )
 
-func ExampleCookieStoreConfig_Default() {
+func ExampleCookieStoreConfig_default() {
 	os.Setenv("TEST_APPKIT_SESSIONS_COOKIESTORE_Name", "COOKIESTORE_NAME")
 	os.Setenv("TEST_APPKIT_SESSIONS_COOKIESTORE_Key", "COOKIESTORE_KEY")
 
@@ -40,7 +40,7 @@ func ExampleCookieStoreConfig_Default() {
 	// NoSecure: false
 }
 
-func ExampleCookieStoreConfig_MissingName() {
+func ExampleCookieStoreConfig_missingName() {
 	os.Unsetenv("TEST_APPKIT_SESSIONS_COOKIESTORE_Name")
 	os.Setenv("TEST_APPKIT_SESSIONS_COOKIESTORE_Key", "secret")
 
@@ -52,7 +52,7 @@ func ExampleCookieStoreConfig_MissingName() {
 	// Name is required, but blank
 }
 
-func ExampleCookieStoreConfig_MissingKey() {
+func ExampleCookieStoreConfig_missingKey() {
 	os.Setenv("TEST_APPKIT_SESSIONS_COOKIESTORE_Name", "_cookiestore")
 	os.Unsetenv("TEST_APPKIT_SESSIONS_COOKIESTORE_Key")
 

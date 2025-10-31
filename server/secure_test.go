@@ -11,7 +11,7 @@ import (
 //////////////////////////////////////////////////
 // CSRF Required Header Verification
 
-func ExampleCSRFHeader_Blank() {
+func ExampleCrossSiteConfig_csrfHeaderBlank() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins:  "http://example.com",
 		CSRFRequiredHeader: "", // Explicitly blank
@@ -27,7 +27,7 @@ func ExampleCSRFHeader_Blank() {
 	// 200
 }
 
-func ExampleCSRFHeader_Set() {
+func ExampleCrossSiteConfig_csrfHeaderSet() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins:  "http://example.com",
 		CSRFRequiredHeader: "X-Csrf", // Same as default
@@ -44,7 +44,7 @@ func ExampleCSRFHeader_Set() {
 	// 200
 }
 
-func ExampleCSRFHeader_Missing() {
+func ExampleCrossSiteConfig_csrfHeaderMissing() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins:  "http://example.com",
 		CSRFRequiredHeader: "X-Csrf", // Same as default
@@ -63,13 +63,14 @@ func ExampleCSRFHeader_Missing() {
 // Go's net/http:
 //
 // > HTTP defines that header names are case-insensitive. The request
-//   parser implements this by using CanonicalHeaderKey, making the
-//   first character and any characters following a hyphen uppercase
-//   and the rest lowercase.
+//
+//	parser implements this by using CanonicalHeaderKey, making the
+//	first character and any characters following a hyphen uppercase
+//	and the rest lowercase.
 //
 // To avoid confusion, `verifyHeader` middleware converts the passed
 // key using CanonicalHeaderKey before using it to filter requests
-func ExampleCSRFHeader_CaseSensitivity() {
+func ExampleCrossSiteConfig_csrfHeaderCaseSensitivity() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins:  "http://example.com",
 		CSRFRequiredHeader: "X-Csrf", // Same as default
@@ -105,7 +106,7 @@ func ExampleCSRFHeader_CaseSensitivity() {
 //////////////////////////////////////////////////
 // Origin Verification
 
-func ExampleOrigin() {
+func ExampleCrossSiteConfig_origin() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins: "http://example.com",
 	}
@@ -120,7 +121,7 @@ func ExampleOrigin() {
 	// 200
 }
 
-func ExampleOrigin_MultipleAllowedOrigins() {
+func ExampleCrossSiteConfig_originMultipleAllowedOrigins() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins: "http://example.com,http://2.example.com",
 	}
@@ -141,7 +142,7 @@ func ExampleOrigin_MultipleAllowedOrigins() {
 	// 200
 }
 
-func ExampleOrigin_ReferrerFallback() {
+func ExampleCrossSiteConfig_originReferrerFallback() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins: "http://example.com",
 	}
@@ -157,7 +158,7 @@ func ExampleOrigin_ReferrerFallback() {
 	// 200
 }
 
-func ExampleOrigin_MissingOriginAndReferrer() {
+func ExampleCrossSiteConfig_originMissingOriginAndReferrer() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins: "http://example.com,http://2.example.com",
 	}
@@ -172,7 +173,7 @@ func ExampleOrigin_MissingOriginAndReferrer() {
 	// 400
 }
 
-func ExampleOrigin_InvalidReferrerFallback() {
+func ExampleCrossSiteConfig_originInvalidReferrerFallback() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins: "http://example.com",
 	}
@@ -189,7 +190,7 @@ func ExampleOrigin_InvalidReferrerFallback() {
 	// 400
 }
 
-func ExampleOrigin_OverlappingReferrerFallback() {
+func ExampleCrossSiteConfig_originOverlappingReferrerFallback() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins: "http://example.com",
 	}
@@ -205,7 +206,7 @@ func ExampleOrigin_OverlappingReferrerFallback() {
 	// 400
 }
 
-func ExampleCors() {
+func ExampleCrossSiteConfig_cors() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins: "http://example.com",
 	}
@@ -228,7 +229,7 @@ func ExampleCors() {
 	// Access-Control-Max_age: []
 }
 
-func ExampleCors_MultipleOrigins() {
+func ExampleCrossSiteConfig_corsMultipleOrigins() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins: "http://example.com,http://2.example.com",
 	}
@@ -267,7 +268,7 @@ func ExampleCors_MultipleOrigins() {
 	// Access-Control-Max_age: []
 }
 
-func ExampleCors_NoOrigin() {
+func ExampleCrossSiteConfig_corsNoOrigin() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins:  "http://example.com",
 		CSRFRequiredHeader: "",
@@ -290,7 +291,7 @@ func ExampleCors_NoOrigin() {
 	// Access-Control-Max_age: []
 }
 
-func ExampleCors_DisallowedOrigin() {
+func ExampleCrossSiteConfig_corsDisallowedOrigin() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins:  "http://example.com",
 		CSRFRequiredHeader: "",
@@ -314,7 +315,7 @@ func ExampleCors_DisallowedOrigin() {
 	// Access-Control-Max_age: []
 }
 
-func ExampleCors_CSRFHeaderRequest() {
+func ExampleCrossSiteConfig_corsCsrfHeaderRequest() {
 	cfg := CrossSiteConfig{
 		RawAllowedOrigins:  "http://example.com",
 		CSRFRequiredHeader: "X-Csrf",
