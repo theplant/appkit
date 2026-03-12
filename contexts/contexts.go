@@ -21,6 +21,13 @@ func (s *statusWriter) WriteHeader(status int) {
 	s.ResponseWriter.WriteHeader(status)
 }
 
+// Flush implements http.Flusher interface to support SSE streaming.
+func (s *statusWriter) Flush() {
+	if f, ok := s.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 func WithHTTPStatus(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		sw := &statusWriter{ResponseWriter: w}
