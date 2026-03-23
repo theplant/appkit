@@ -10,8 +10,8 @@ require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/go-kit/kit v0.12.1-0.20220826005032-a7ba4fa4e289
 	github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
-	github.com/golang/protobuf v1.5.3
-	github.com/google/uuid v1.3.0
+	github.com/golang/protobuf v1.5.4
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.2.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -28,9 +28,9 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/theplant/testingutils v0.0.0-20190603093022-26d8b4d95c61
 	github.com/uber/jaeger-client-go v2.29.1+incompatible
-	golang.org/x/crypto v0.45.0
-	google.golang.org/grpc v1.56.3
-	google.golang.org/protobuf v1.33.0
+	golang.org/x/crypto v0.46.0
+	google.golang.org/grpc v1.79.3
+	google.golang.org/protobuf v1.36.10
 )
 
 require (
@@ -51,7 +51,7 @@ require (
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/facebookgo/limitgroup v0.0.0-20150612190941-6abd8d71ec01 // indirect
 	github.com/facebookgo/muster v0.0.0-20150708232844-fd3d7953fd52 // indirect
-	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/go-kit/log v0.2.0 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
@@ -77,9 +77,9 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0 // indirect
