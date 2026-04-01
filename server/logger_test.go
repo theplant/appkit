@@ -49,6 +49,9 @@ func TestLogRequest(t *testing.T) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 	req.Header.Add(traceHeaderKey, trace)
+	req.Header.Add("X-Forwarded-For", "192.168.1.1")
+	req.Header.Add("X-Forwarded-For", "192.168.2.1")
+	req.RemoteAddr = "192.168.3.1:12345"
 	h = Compose(
 		// Recovery should come before logReq to set the status code to 500
 		Recovery,

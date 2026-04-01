@@ -54,6 +54,8 @@ func HTTPServerKVs(req *http.Request) []interface{} {
 		"http.path", req.URL.Path,
 		"http.query_string", req.URL.RawQuery,
 		"http.user_agent", req.UserAgent(),
+		"http.x_forwarded_for", strings.Join(req.Header.Values("X-Forwarded-For"), ", "),
+		"http.remote_addr", req.RemoteAddr,
 		"http.client_ip", clientIP(req),
 	}
 }
