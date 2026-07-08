@@ -25,8 +25,9 @@ func logErr(l log.Logger, f func() error) {
 // variable. It is opt-in: if the variable is unset it returns 0, leaving the
 // corresponding http.Server timeout disabled so services that don't configure
 // it keep the previous "no timeout" behaviour. If the variable is set but
-// cannot be parsed it logs a warning and returns 0, rather than silently
-// applying a wrong (and possibly connection-killing) value.
+// cannot be parsed, or is negative (a negative deadline would make every
+// request time out immediately), it logs a warning and returns 0, rather than
+// silently applying a wrong (and possibly connection-killing) value.
 func envDuration(logger log.Logger, name string) time.Duration {
 	v := os.Getenv(name)
 	if v == "" {
@@ -42,7 +43,25 @@ func envDuration(logger log.Logger, name string) time.Duration {
 		)
 		return 0
 	}
+	if d < 0 {
+		logger.Warn().Log(
+			"msg", fmt.Sprintf("ignoring negative duration in %s: %q", name, v),
+			"env", name,
+			"value", v,
+		)
+		return 0
+	}
 	return d
+}
+
+// serverTimeouts reads the opt-in http.Server timeouts from SERVER_* env vars.
+// Kept separate from ListenAndServe so the env-var-to-field wiring is unit
+// testable (a mismapped field would otherwise ship silently).
+func serverTimeouts(logger log.Logger) (readHeader, read, write, idle time.Duration) {
+	return envDuration(logger, "SERVER_READ_HEADER_TIMEOUT"),
+		envDuration(logger, "SERVER_READ_TIMEOUT"),
+		envDuration(logger, "SERVER_WRITE_TIMEOUT"),
+		envDuration(logger, "SERVER_IDLE_TIMEOUT")
 }
 
 func ContextAndMiddleware() (context.Context, server.Middleware, io.Closer, error) {
@@ -93,10 +112,7 @@ func ListenAndServe(app func(context.Context, *http.ServeMux) error) {
 
 	// http.Server timeouts, opt-in per service via env. Unset => 0 => disabled,
 	// preserving existing behaviour for services that don't configure them.
-	cfg.ReadHeaderTimeout = envDuration(logger, "SERVER_READ_HEADER_TIMEOUT")
-	cfg.ReadTimeout = envDuration(logger, "SERVER_READ_TIMEOUT")
-	cfg.WriteTimeout = envDuration(logger, "SERVER_WRITE_TIMEOUT")
-	cfg.IdleTimeout = envDuration(logger, "SERVER_IDLE_TIMEOUT")
+	cfg.ReadHeaderTimeout, cfg.ReadTimeout, cfg.WriteTimeout, cfg.IdleTimeout = serverTimeouts(logger)
 
 	logger.Info().Log(
 		"msg", "configured http.Server timeouts (0 = disabled)",

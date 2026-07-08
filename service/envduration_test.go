@@ -24,10 +24,15 @@ func TestEnvDuration(t *testing.T) {
 		{desc: "valid seconds", set: true, val: "30s", want: 30 * time.Second},
 		{desc: "valid minutes", set: true, val: "2m", want: 2 * time.Minute},
 		{desc: "valid composite", set: true, val: "1m30s", want: 90 * time.Second},
+		// Explicit zero is a valid way to say "disabled".
+		{desc: "explicit zero", set: true, val: "0s", want: 0},
 		// Invalid => 0 (logged), never a wrong non-zero value that could kill
 		// legitimate connections.
 		{desc: "invalid garbage", set: true, val: "not-a-duration", want: 0},
 		{desc: "invalid missing unit", set: true, val: "30", want: 0},
+		// Negative parses fine but would make every request time out
+		// immediately, so it is rejected and treated as disabled.
+		{desc: "negative", set: true, val: "-5s", want: 0},
 	}
 
 	logger := log.NewNopLogger()
