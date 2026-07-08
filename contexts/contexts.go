@@ -28,6 +28,14 @@ func (s *statusWriter) Flush() {
 	}
 }
 
+// Unwrap exposes the wrapped ResponseWriter so that http.ResponseController
+// can reach the underlying net.Conn (e.g. for SetReadDeadline /
+// SetWriteDeadline). Without this, per-request deadline control silently fails
+// once a handler is wrapped by WithHTTPStatus.
+func (s *statusWriter) Unwrap() http.ResponseWriter {
+	return s.ResponseWriter
+}
+
 func WithHTTPStatus(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		sw := &statusWriter{ResponseWriter: w}
