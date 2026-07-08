@@ -14,14 +14,22 @@ import (
 )
 
 type Config struct {
-	Addr string `default:":9800"`
+	Addr              string `default:":9800"`
+	ReadTimeout       time.Duration
+	ReadHeaderTimeout time.Duration
+	WriteTimeout      time.Duration
+	IdleTimeout       time.Duration
 }
 
 func newServer(config Config, logger log.Logger, handler http.Handler) *http.Server {
 	server := http.Server{
-		Addr:     config.Addr,
-		ErrorLog: golog.New(log.LogWriter(logger.Error()), "", golog.Llongfile),
-		Handler:  handler,
+		Addr:              config.Addr,
+		ReadTimeout:       config.ReadTimeout,
+		ReadHeaderTimeout: config.ReadHeaderTimeout,
+		WriteTimeout:      config.WriteTimeout,
+		IdleTimeout:       config.IdleTimeout,
+		ErrorLog:          golog.New(log.LogWriter(logger.Error()), "", golog.Llongfile),
+		Handler:           handler,
 	}
 
 	return &server

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/theplant/appkit/log"
@@ -18,6 +19,30 @@ func logErr(l log.Logger, f func() error) {
 	if err := f(); err != nil {
 		l.WithError(err).Log()
 	}
+}
+
+// envDuration reads a time.Duration (e.g. "30s") from the named environment
+// variable. It is opt-in: if the variable is unset it returns 0, leaving the
+// corresponding http.Server timeout disabled so services that don't configure
+// it keep the previous "no timeout" behaviour. If the variable is set but
+// cannot be parsed it logs a warning and returns 0, rather than silently
+// applying a wrong (and possibly connection-killing) value.
+func envDuration(logger log.Logger, name string) time.Duration {
+	v := os.Getenv(name)
+	if v == "" {
+		return 0
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil {
+		logger.Warn().Log(
+			"msg", fmt.Sprintf("ignoring invalid duration in %s: %q", name, v),
+			"env", name,
+			"value", v,
+			"err", err,
+		)
+		return 0
+	}
+	return d
 }
 
 func ContextAndMiddleware() (context.Context, server.Middleware, io.Closer, error) {
@@ -65,6 +90,13 @@ func ListenAndServe(app func(context.Context, *http.ServeMux) error) {
 		}
 		cfg.Addr = ":" + port
 	}
+
+	// http.Server timeouts, opt-in per service via env. Unset => 0 => disabled,
+	// preserving existing behaviour for services that don't configure them.
+	cfg.ReadHeaderTimeout = envDuration(logger, "SERVER_READ_HEADER_TIMEOUT")
+	cfg.ReadTimeout = envDuration(logger, "SERVER_READ_TIMEOUT")
+	cfg.WriteTimeout = envDuration(logger, "SERVER_WRITE_TIMEOUT")
+	cfg.IdleTimeout = envDuration(logger, "SERVER_IDLE_TIMEOUT")
 
 	hc := server.GoListenAndServe(
 		cfg,
