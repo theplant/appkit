@@ -98,6 +98,14 @@ func ListenAndServe(app func(context.Context, *http.ServeMux) error) {
 	cfg.WriteTimeout = envDuration(logger, "SERVER_WRITE_TIMEOUT")
 	cfg.IdleTimeout = envDuration(logger, "SERVER_IDLE_TIMEOUT")
 
+	logger.Info().Log(
+		"msg", "configured http.Server timeouts (0 = disabled)",
+		"read_header_timeout", cfg.ReadHeaderTimeout,
+		"read_timeout", cfg.ReadTimeout,
+		"write_timeout", cfg.WriteTimeout,
+		"idle_timeout", cfg.IdleTimeout,
+	)
+
 	hc := server.GoListenAndServe(
 		cfg,
 		logger,
