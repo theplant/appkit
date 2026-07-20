@@ -114,13 +114,23 @@ func ListenAndServe(app func(context.Context, *http.ServeMux) error) {
 	// preserving existing behaviour for services that don't configure them.
 	cfg.ReadHeaderTimeout, cfg.ReadTimeout, cfg.WriteTimeout, cfg.IdleTimeout = serverTimeouts(logger)
 
-	logger.Info().Log(
-		"msg", "configured http.Server timeouts (0 = disabled)",
-		"read_header_timeout", cfg.ReadHeaderTimeout,
-		"read_timeout", cfg.ReadTimeout,
-		"write_timeout", cfg.WriteTimeout,
-		"idle_timeout", cfg.IdleTimeout,
-	)
+	// Log only the enabled (non-zero) timeouts.
+	kvs := []interface{}{"msg", "configured http.Server timeouts"}
+	if cfg.ReadHeaderTimeout > 0 {
+		kvs = append(kvs, "read_header_timeout", cfg.ReadHeaderTimeout)
+	}
+	if cfg.ReadTimeout > 0 {
+		kvs = append(kvs, "read_timeout", cfg.ReadTimeout)
+	}
+	if cfg.WriteTimeout > 0 {
+		kvs = append(kvs, "write_timeout", cfg.WriteTimeout)
+	}
+	if cfg.IdleTimeout > 0 {
+		kvs = append(kvs, "idle_timeout", cfg.IdleTimeout)
+	}
+	if len(kvs) > 2 {
+		logger.Info().Log(kvs...)
+	}
 
 	hc := server.GoListenAndServe(
 		cfg,
