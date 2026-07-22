@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/theplant/appkit/log"
@@ -18,6 +19,49 @@ func logErr(l log.Logger, f func() error) {
 	if err := f(); err != nil {
 		l.WithError(err).Log()
 	}
+}
+
+// envDuration reads a time.Duration (e.g. "30s") from the named environment
+// variable. It is opt-in: if the variable is unset it returns 0, leaving the
+// corresponding http.Server timeout disabled so services that don't configure
+// it keep the previous "no timeout" behaviour. If the variable is set but
+// cannot be parsed, or is negative (a negative deadline would make every
+// request time out immediately), it logs a warning and returns 0, rather than
+// silently applying a wrong (and possibly connection-killing) value.
+func envDuration(logger log.Logger, name string) time.Duration {
+	v := os.Getenv(name)
+	if v == "" {
+		return 0
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil {
+		logger.Warn().Log(
+			"msg", fmt.Sprintf("ignoring invalid duration in %s: %q", name, v),
+			"env", name,
+			"value", v,
+			"err", err,
+		)
+		return 0
+	}
+	if d < 0 {
+		logger.Warn().Log(
+			"msg", fmt.Sprintf("ignoring negative duration in %s: %q", name, v),
+			"env", name,
+			"value", v,
+		)
+		return 0
+	}
+	return d
+}
+
+// serverTimeouts reads the opt-in http.Server timeouts from SERVER_* env vars.
+// Kept separate from ListenAndServe so the env-var-to-field wiring is unit
+// testable (a mismapped field would otherwise ship silently).
+func serverTimeouts(logger log.Logger) (readHeader, read, write, idle time.Duration) {
+	return envDuration(logger, "SERVER_READ_HEADER_TIMEOUT"),
+		envDuration(logger, "SERVER_READ_TIMEOUT"),
+		envDuration(logger, "SERVER_WRITE_TIMEOUT"),
+		envDuration(logger, "SERVER_IDLE_TIMEOUT")
 }
 
 func ContextAndMiddleware() (context.Context, server.Middleware, io.Closer, error) {
@@ -64,6 +108,28 @@ func ListenAndServe(app func(context.Context, *http.ServeMux) error) {
 			port = "9800"
 		}
 		cfg.Addr = ":" + port
+	}
+
+	// http.Server timeouts, opt-in per service via env. Unset => 0 => disabled,
+	// preserving existing behaviour for services that don't configure them.
+	cfg.ReadHeaderTimeout, cfg.ReadTimeout, cfg.WriteTimeout, cfg.IdleTimeout = serverTimeouts(logger)
+
+	// Log only the enabled (non-zero) timeouts.
+	kvs := []interface{}{"msg", "configured http.Server timeouts"}
+	if cfg.ReadHeaderTimeout > 0 {
+		kvs = append(kvs, "read_header_timeout", cfg.ReadHeaderTimeout)
+	}
+	if cfg.ReadTimeout > 0 {
+		kvs = append(kvs, "read_timeout", cfg.ReadTimeout)
+	}
+	if cfg.WriteTimeout > 0 {
+		kvs = append(kvs, "write_timeout", cfg.WriteTimeout)
+	}
+	if cfg.IdleTimeout > 0 {
+		kvs = append(kvs, "idle_timeout", cfg.IdleTimeout)
+	}
+	if len(kvs) > 2 {
+		logger.Info().Log(kvs...)
 	}
 
 	hc := server.GoListenAndServe(
