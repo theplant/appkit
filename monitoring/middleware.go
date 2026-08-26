@@ -23,19 +23,36 @@ const monitorKey key = iota
 // 1. instrument requests via a Monitor
 // 2. install monitor in request context for use by later handlers
 func WithMonitor(m Monitor) func(h http.Handler) http.Handler {
+	return withMonitor(m, true)
+}
+
+// WithMonitorContextOnly does step 2 of WithMonitor without step 1: it
+// installs the Monitor in the request context, but does not record the
+// per-request "request" metric.
+//
+// Use it when the Monitor is a log monitor: there the "request" metric is one
+// log line per request, which on a busy service can be most of the log volume
+// while carrying data that request tracing already has.
+func WithMonitorContextOnly(m Monitor) func(h http.Handler) http.Handler {
+	return withMonitor(m, false)
+}
+
+func withMonitor(m Monitor, recordRequestMetric bool) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			var recoveredStatusCode int
 
-			defer func() {
-				interval := time.Now().Sub(start)
-				go func() {
-					tags := tagsForRequest(r, recoveredStatusCode)
-					fields := fieldsForContext(r.Context())
-					m.InsertRecord("request", float64(interval/time.Millisecond), tags, fields, start)
+			if recordRequestMetric {
+				defer func() {
+					interval := time.Now().Sub(start)
+					go func() {
+						tags := tagsForRequest(r, recoveredStatusCode)
+						fields := fieldsForContext(r.Context())
+						m.InsertRecord("request", float64(interval/time.Millisecond), tags, fields, start)
+					}()
 				}()
-			}()
+			}
 
 			defer server.RecoverAndSetStatusCode(&recoveredStatusCode)
 

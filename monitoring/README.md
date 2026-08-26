@@ -53,6 +53,19 @@ Now request data including request path, method, HTTP response status code, requ
 
 The middleware will convert any sequences of 1 or more digits into `:id`. Eg. `GET /api/users/123/comments/456` will be tagged with path of `/api/users/:id/comments/:id`.
 
+## Turning off the `request` measurement
+
+`monitoring.WithMonitorContextOnly` installs the Monitor in the request context
+without recording the `request` measurement. Handlers that record their own
+metrics keep working; only the per-request record goes away.
+
+Use it when the Monitor is a log monitor. There the `request` measurement is one
+log line per request, which on a busy service can be most of the log volume
+while carrying data that request tracing already has.
+
+Services built on `appkit/service` get this through an environment variable:
+set `MONITORING_DISABLE_REQUEST_METRIC=true`.
+
 # Recording other metrics
 
 To record other metrics, eg counting subscriptions, measuring time of API calls to other services, retrieve the metric from the context with `monitoring.ForceContext`, and then call methods on the interface:

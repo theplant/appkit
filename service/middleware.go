@@ -46,11 +46,44 @@ func middleware(ctx context.Context) (server.Middleware, io.Closer, error) {
 		newRelicMiddleware(logger),
 		avoidClickjackingMiddleware(logger),
 		hstsMiddleware(logger),
-		monitoring.WithMonitor(monitoring.ForceContext(ctx)),
+		monitoringMiddleware(ctx, logger),
 		errornotifier.Recover(errornotifier.ForceContext(ctx)),
 		tracer,
 		server.DefaultMiddleware(logger),
 	), tC, nil
+}
+
+////////////////////////////////////////////////////////////
+// REQUEST MONITORING
+
+type monitoringConfig struct {
+	// DisableRequestMetric turns off the per-request "request" metric while
+	// still installing the Monitor in the request context, so handlers that
+	// record their own metrics keep working.
+	//
+	// Set it when the service falls back to the log monitor: there the metric
+	// is one log line per request, which request tracing already covers.
+	DisableRequestMetric bool `env:"MONITORING_DISABLE_REQUEST_METRIC"`
+}
+
+func monitoringMiddleware(ctx context.Context, logger log.Logger) server.Middleware {
+	config := monitoringConfig{}
+
+	err := configor.New(&configor.Config{ENVPrefix: "MONITORING"}).Load(&config)
+	if err != nil {
+		panic(err)
+	}
+
+	monitor := monitoring.ForceContext(ctx)
+
+	if config.DisableRequestMetric {
+		logger.Info().Log(
+			"msg", "not recording the per-request \"request\" metric: MONITORING_DISABLE_REQUEST_METRIC is set",
+		)
+		return monitoring.WithMonitorContextOnly(monitor)
+	}
+
+	return monitoring.WithMonitor(monitor)
 }
 
 ////////////////////////////////////////////////////////////
