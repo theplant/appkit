@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go/build"
 	"io"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -77,8 +78,15 @@ func TestLogError(t *testing.T) {
 	}
 }
 
+// moduleRoot is the directory of the appkit module. The stack traces
+// have absolute file paths, and the expected values do not.
+var moduleRoot = func() string {
+	_, file, _, _ := runtime.Caller(0)
+	return filepath.Dir(filepath.Dir(file))
+}()
+
 func cleanStacktrace(stacktrace string) (cleantrace string) {
-	cleantrace = strings.Replace(stacktrace, build.Default.GOPATH+"/src/", "", -1)
+	cleantrace = strings.Replace(stacktrace, moduleRoot+"/", "github.com/theplant/appkit/", -1)
 	lines := strings.Split(cleantrace, "\n")
 	if len(lines) >= 4 {
 		lines = lines[0:5]
