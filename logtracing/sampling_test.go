@@ -68,12 +68,12 @@ func TestRootOrErrorSpans(t *testing.T) {
 		t.Error("a root span must be kept")
 	}
 
-	var remoteParent SpanID
-	remoteParent[0] = 1
-	rctx, remoteRoot := StartSpan(context.Background(), "remote child", WithParentSpanID(remoteParent))
-	EndSpan(rctx, nil)
-	if !remoteRoot.sampled() {
-		t.Error("a span whose parent is in another process is the root of this process and must be kept")
+	var parentID SpanID
+	parentID[0] = 1
+	ictx, byID := StartSpan(context.Background(), "parent by id", WithParentSpanID(parentID))
+	EndSpan(ictx, nil)
+	if !byID.sampled() {
+		t.Error("a span whose parent is given only by ID (e.g. from a traceparent header) has no parent span in its context and must be kept")
 	}
 }
 

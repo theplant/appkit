@@ -146,7 +146,7 @@ A `TailSampler` runs when a span ends and can mark a head-sampled span as unsamp
 
 ```Go
 logtracing.ApplyConfig(logtracing.Config{
-	// Keep spans that are roots in this process, plus any span that recorded
+	// Keep spans started without a parent span in their context, plus any span that recorded
 	// an error or panic (an HTTP 5xx response alone is not an error).
 	TailSampler: logtracing.RootOrErrorSpans(),
 })

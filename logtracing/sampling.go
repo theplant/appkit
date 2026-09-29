@@ -48,10 +48,10 @@ func NeverSample() Sampler {
 // still inherit the head decision.
 type TailSampler func(s *SpanData) bool
 
-// RootOrErrorSpans keeps spans that are roots in this process (no parent, or a
-// parent in another process) and spans that recorded an error or a panic.
+// RootOrErrorSpans keeps spans that were started without a parent span in
+// their context, and spans that recorded an error or a panic.
 func RootOrErrorSpans() TailSampler {
 	return func(s *SpanData) bool {
-		return !s.ParentSpanID.IsValid() || s.HasRemoteParent || s.Err != nil || s.Panic != nil
+		return !s.HasContextParent || s.Err != nil || s.Panic != nil
 	}
 }

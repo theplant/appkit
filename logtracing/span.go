@@ -18,8 +18,8 @@ type spanMeta struct {
 }
 
 type span struct {
-	parentSpanID SpanID
-	remoteParent bool
+	parentSpanID    SpanID
+	parentInContext bool // StartSpan found a parent span in the context
 
 	traceID     TraceID
 	spanID      SpanID

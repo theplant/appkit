@@ -84,13 +84,13 @@ func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Cont
 		cfg         = config.Load().(*Config)
 		idGenerator = cfg.IDGenerator
 
-		parent       = SpanFromContext(ctx)
-		parentSpanID SpanID
-		remoteParent bool
-		traceID      TraceID
-		spanID       = idGenerator.NewSpanID()
-		isSampled    bool
-		startTime    time.Time
+		parent          = SpanFromContext(ctx)
+		parentSpanID    SpanID
+		parentInContext bool
+		traceID         TraceID
+		spanID          = idGenerator.NewSpanID()
+		isSampled       bool
+		startTime       time.Time
 	)
 
 	for _, op := range o {
@@ -100,7 +100,6 @@ func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Cont
 	if parent == nil {
 		if opts.ParentSpanID.IsValid() {
 			parentSpanID = opts.ParentSpanID
-			remoteParent = true
 		}
 		if opts.TraceID.IsValid() {
 			traceID = opts.TraceID
@@ -108,6 +107,7 @@ func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Cont
 			traceID = idGenerator.NewTraceID()
 		}
 	} else {
+		parentInContext = true
 		parentSpanID = parent.spanID
 		traceID = parent.traceID
 		isSampled = parent.isSampled
@@ -139,8 +139,8 @@ func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Cont
 	}
 
 	s := span{
-		parentSpanID: parentSpanID,
-		remoteParent: remoteParent,
+		parentSpanID:    parentSpanID,
+		parentInContext: parentInContext,
 
 		traceID:   traceID,
 		spanID:    spanID,
@@ -286,8 +286,8 @@ func ExportSpan(s *span) {
 
 func makeSpanData(s *span) *SpanData {
 	return &SpanData{
-		ParentSpanID:    s.parentSpanID,
-		HasRemoteParent: s.remoteParent,
+		ParentSpanID:     s.parentSpanID,
+		HasContextParent: s.parentInContext,
 
 		TraceID:   s.traceID,
 		SpanID:    s.spanID,
