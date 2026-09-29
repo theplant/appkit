@@ -66,14 +66,6 @@ func LogRequest(h http.Handler) http.Handler {
 				}
 			}
 
-			// NOTE for compatibility
-			span.End()
-			span.AppendKVs(
-				"request_us", span.Duration().Microseconds(),
-				"status", status,
-				"user_agent", r.UserAgent(),
-			)
-
 			// Will absorb panics in earlier middleware
 			if err := recover(); err != nil {
 				span.RecordPanic(err)
@@ -85,6 +77,14 @@ func LogRequest(h http.Handler) http.Handler {
 					"stack", string(stack),
 				)
 			}
+
+			// NOTE for compatibility
+			span.End()
+			span.AppendKVs(
+				"request_us", span.Duration().Microseconds(),
+				"status", status,
+				"user_agent", r.UserAgent(),
+			)
 
 			logtracing.LogSpan(r.Context(), span)
 		}()
