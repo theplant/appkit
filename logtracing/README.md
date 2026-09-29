@@ -152,7 +152,7 @@ logtracing.ApplyConfig(logtracing.Config{
 })
 ```
 
-Unsampled spans are still logged, with `span.is_sampled=0`, so a log pipeline can drop them. Set `SkipUnsampledLogs: true` to not log them at all. Unsampled spans are never exported.
+Spans dropped by the tail sampler are still logged, with `span.is_sampled=0`, so a log pipeline can drop them. They are not exported.
 
 ## Export span data
 

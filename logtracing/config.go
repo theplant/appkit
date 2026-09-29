@@ -13,10 +13,6 @@ type Config struct {
 	// TailSampler, if set, is consulted when a span ends and can mark a
 	// sampled span as unsampled. nil keeps the head sampling decision.
 	TailSampler TailSampler
-
-	// SkipUnsampledLogs makes LogSpan skip unsampled spans. Otherwise a span
-	// dropped by TailSampler is logged with span.is_sampled=0.
-	SkipUnsampledLogs bool
 }
 
 var configWriteMu sync.Mutex
@@ -34,9 +30,6 @@ func ApplyConfig(cfg Config) {
 	}
 	if cfg.TailSampler != nil {
 		c.TailSampler = cfg.TailSampler
-	}
-	if cfg.SkipUnsampledLogs {
-		c.SkipUnsampledLogs = true
 	}
 	config.Store(&c)
 }

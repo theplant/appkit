@@ -203,10 +203,6 @@ func RecordPanic(ctx context.Context) {
 }
 
 func LogSpan(ctx context.Context, s *span) {
-	if !s.sampled() && config.Load().(*Config).SkipUnsampledLogs {
-		return
-	}
-
 	var (
 		l       = log.ForceContext(ctx)
 		keyvals []interface{}

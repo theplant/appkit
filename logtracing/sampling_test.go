@@ -105,27 +105,6 @@ func TestUnsampledSpanIsLoggedWithIsSampledZero(t *testing.T) {
 	}
 }
 
-func TestSkipUnsampledLogs(t *testing.T) {
-	withConfig(t, Config{
-		DefaultSampler:    AlwaysSample(),
-		TailSampler:       RootOrErrorSpans(),
-		SkipUnsampledLogs: true,
-	})
-
-	var buf bytes.Buffer
-	ctx, _ := StartSpan(contextWithBufferLogger(&buf), "root")
-	cctx, _ := StartSpan(ctx, "child")
-	EndSpan(cctx, nil)
-	if buf.Len() != 0 {
-		t.Fatalf("a dropped span must not be logged when SkipUnsampledLogs is set; got %q", buf.String())
-	}
-
-	EndSpan(ctx, nil)
-	if !strings.Contains(buf.String(), "span.context=root") {
-		t.Fatalf("a kept span must still be logged; got %q", buf.String())
-	}
-}
-
 func TestTailDroppedSpanIsNotExported(t *testing.T) {
 	withConfig(t, Config{DefaultSampler: AlwaysSample(), TailSampler: RootOrErrorSpans()})
 	exporter := &mockedExporter{}
