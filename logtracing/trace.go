@@ -217,9 +217,7 @@ func LogSpan(ctx context.Context, s *span) {
 		"span.dur_ms", dur.Milliseconds(),
 	)
 
-	if s.tailDropped.Load() {
-		keyvals = append(keyvals, "span.is_sampled", 0)
-	} else if s.isSampled {
+	if s.sampled() {
 		keyvals = append(keyvals, "span.is_sampled", 1)
 	}
 

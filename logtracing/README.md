@@ -152,7 +152,7 @@ logtracing.ApplyConfig(logtracing.Config{
 })
 ```
 
-Spans dropped by the tail sampler are still logged, with `span.is_sampled=0`, so a log pipeline can drop them. They are not exported.
+Spans dropped by the tail sampler are treated like head-unsampled spans: they are still logged, without `span.is_sampled`, and are not exported.
 
 ## Export span data
 

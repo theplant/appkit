@@ -91,7 +91,7 @@ func TestTailSamplerCannotResampleUnsampledSpan(t *testing.T) {
 	}
 }
 
-func TestUnsampledSpanIsLoggedWithIsSampledZero(t *testing.T) {
+func TestTailDroppedSpanIsLoggedAsUnsampled(t *testing.T) {
 	withConfig(t, Config{DefaultSampler: AlwaysSample(), TailSampler: RootOrErrorSpans()})
 
 	var buf bytes.Buffer
@@ -100,8 +100,8 @@ func TestUnsampledSpanIsLoggedWithIsSampledZero(t *testing.T) {
 	EndSpan(cctx, nil)
 
 	out := buf.String()
-	if !strings.Contains(out, "span.context=child") || !strings.Contains(out, "span.is_sampled=0") {
-		t.Fatalf("by default a dropped span is still logged, marked span.is_sampled=0; got %q", out)
+	if !strings.Contains(out, "span.context=child") || strings.Contains(out, "span.is_sampled") {
+		t.Fatalf("a tail-dropped span must be logged like a head-unsampled one: without span.is_sampled; got %q", out)
 	}
 }
 
