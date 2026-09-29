@@ -41,3 +41,17 @@ func NeverSample() Sampler {
 		return false
 	}
 }
+
+// TailSampler decides, when a span ends, whether a head-sampled span stays
+// sampled. It sees only what was recorded before End, and it cannot sample a
+// span the head sampler dropped. Its decision does not propagate: children
+// still inherit the head decision.
+type TailSampler func(s *SpanData) bool
+
+// RootOrErrorSpans keeps spans that are roots in this process (no parent, or a
+// parent in another process) and spans that recorded an error or a panic.
+func RootOrErrorSpans() TailSampler {
+	return func(s *SpanData) bool {
+		return !s.ParentSpanID.IsValid() || s.HasRemoteParent || s.Err != nil || s.Panic != nil
+	}
+}

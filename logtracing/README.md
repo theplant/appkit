@@ -140,6 +140,20 @@ For the server requests:
 For internal functions:
 - `span.role`: `internal`
 
+## Tail sampling
+
+A `TailSampler` runs when a span ends and can mark a head-sampled span as unsampled. It sees the recorded error and panic, so it can keep failed spans while dropping the rest. It cannot sample a span the head sampler dropped, it does not see attributes appended after `End`, and its decision is per span: children still inherit the head decision, so a kept span may reference a parent that was dropped.
+
+```Go
+logtracing.ApplyConfig(logtracing.Config{
+	// Keep spans that are roots in this process, plus any span that recorded
+	// an error or panic (an HTTP 5xx response alone is not an error).
+	TailSampler: logtracing.RootOrErrorSpans(),
+})
+```
+
+Unsampled spans are still logged, with `span.is_sampled=0`, so a log pipeline can drop them. Set `SkipUnsampledLogs: true` to not log them at all. Unsampled spans are never exported.
+
 ## Export span data
 
 You can export span data to an expected destination such as Honeycomb by registering an exporter.

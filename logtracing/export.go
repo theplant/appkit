@@ -50,6 +50,8 @@ func UnregisterExporter(e Exporter) {
 // SpanData contains all the information collected by a Span.
 type SpanData struct {
 	ParentSpanID SpanID
+	// HasRemoteParent reports whether the parent span is in another process.
+	HasRemoteParent bool
 
 	TraceID
 	SpanID

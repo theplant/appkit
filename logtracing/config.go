@@ -9,10 +9,19 @@ import (
 type Config struct {
 	DefaultSampler Sampler
 	IDGenerator    IDGenerator
+
+	// TailSampler, if set, is consulted when a span ends and can mark a
+	// sampled span as unsampled. nil keeps the head sampling decision.
+	TailSampler TailSampler
+
+	// SkipUnsampledLogs makes LogSpan skip unsampled spans. Otherwise a span
+	// dropped by TailSampler is logged with span.is_sampled=0.
+	SkipUnsampledLogs bool
 }
 
 var configWriteMu sync.Mutex
 
+// ApplyConfig applies the non-zero fields of cfg.
 func ApplyConfig(cfg Config) {
 	configWriteMu.Lock()
 	defer configWriteMu.Unlock()
@@ -22,6 +31,12 @@ func ApplyConfig(cfg Config) {
 	}
 	if cfg.IDGenerator != nil {
 		c.IDGenerator = cfg.IDGenerator
+	}
+	if cfg.TailSampler != nil {
+		c.TailSampler = cfg.TailSampler
+	}
+	if cfg.SkipUnsampledLogs {
+		c.SkipUnsampledLogs = true
 	}
 	config.Store(&c)
 }
