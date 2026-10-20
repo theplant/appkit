@@ -65,3 +65,36 @@ func TestLogRequest(t *testing.T) {
 
 	h.ServeHTTP(rw, req)
 }
+
+func TestLogRequestPanicIsVisibleToTailSampler(t *testing.T) {
+	var sawPanic bool
+	logtracing.ApplyConfig(logtracing.Config{
+		TailSampler: func(s *logtracing.SpanData) bool {
+			if s.Panic != nil {
+				sawPanic = true
+			}
+			return true
+		},
+	})
+	// ApplyConfig cannot unset TailSampler; leave a keep-all sampler behind.
+	t.Cleanup(func() {
+		logtracing.ApplyConfig(logtracing.Config{TailSampler: func(*logtracing.SpanData) bool { return true }})
+	})
+
+	req, err := http.NewRequest("GET", "http://example.com/panic", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	h := Compose(
+		LogRequest,
+		log.WithLogger(log.NewNopLogger()),
+		contexts.WithHTTPStatus,
+	)(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		panic("test")
+	}))
+	h.ServeHTTP(httptest.NewRecorder(), req)
+
+	if !sawPanic {
+		t.Fatal("the panic must be recorded before span.End so a tail sampler can keep panicking requests")
+	}
+}

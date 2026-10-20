@@ -84,12 +84,13 @@ func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Cont
 		cfg         = config.Load().(*Config)
 		idGenerator = cfg.IDGenerator
 
-		parent       = SpanFromContext(ctx)
-		parentSpanID SpanID
-		traceID      TraceID
-		spanID       = idGenerator.NewSpanID()
-		isSampled    bool
-		startTime    time.Time
+		parent          = SpanFromContext(ctx)
+		parentSpanID    SpanID
+		parentInContext bool
+		traceID         TraceID
+		spanID          = idGenerator.NewSpanID()
+		isSampled       bool
+		startTime       time.Time
 	)
 
 	for _, op := range o {
@@ -106,6 +107,7 @@ func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Cont
 			traceID = idGenerator.NewTraceID()
 		}
 	} else {
+		parentInContext = true
 		parentSpanID = parent.spanID
 		traceID = parent.traceID
 		isSampled = parent.isSampled
@@ -137,7 +139,8 @@ func StartSpan(ctx context.Context, name string, o ...StartOption) (context.Cont
 	}
 
 	s := span{
-		parentSpanID: parentSpanID,
+		parentSpanID:    parentSpanID,
+		parentInContext: parentInContext,
 
 		traceID:   traceID,
 		spanID:    spanID,
@@ -214,7 +217,7 @@ func LogSpan(ctx context.Context, s *span) {
 		"span.dur_ms", dur.Milliseconds(),
 	)
 
-	if s.isSampled {
+	if s.sampled() {
 		keyvals = append(keyvals, "span.is_sampled", 1)
 	}
 
@@ -270,7 +273,7 @@ func ExportSpan(s *span) {
 	}
 
 	exp, _ := exporters.Load().(exportersMap)
-	if s.isSampled && len(exp) > 0 {
+	if s.sampled() && len(exp) > 0 {
 		sd := makeSpanData(s)
 
 		for e := range exp {
@@ -281,12 +284,13 @@ func ExportSpan(s *span) {
 
 func makeSpanData(s *span) *SpanData {
 	return &SpanData{
-		ParentSpanID: s.parentSpanID,
+		ParentSpanID:     s.parentSpanID,
+		HasContextParent: s.parentInContext,
 
 		TraceID:   s.traceID,
 		SpanID:    s.spanID,
 		Name:      s.name,
-		IsSampled: s.isSampled,
+		IsSampled: s.sampled(),
 
 		StartTime: s.startTime,
 		EndTime:   s.endTime,

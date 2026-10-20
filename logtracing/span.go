@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -17,12 +18,14 @@ type spanMeta struct {
 }
 
 type span struct {
-	parentSpanID SpanID
+	parentSpanID    SpanID
+	parentInContext bool // StartSpan found a parent span in the context
 
-	traceID   TraceID
-	spanID    SpanID
-	name      string
-	isSampled bool
+	traceID     TraceID
+	spanID      SpanID
+	name        string
+	isSampled   bool // head decision, inherited by children
+	tailDropped atomic.Bool
 
 	startTime time.Time
 	endTime   time.Time
@@ -60,6 +63,15 @@ func (s *span) End() {
 	}
 
 	s.endTime = time.Now()
+
+	if ts := config.Load().(*Config).TailSampler; ts != nil && s.isSampled && !ts(makeSpanData(s)) {
+		s.tailDropped.Store(true)
+	}
+}
+
+// sampled reports the effective decision: head-sampled and not tail-dropped.
+func (s *span) sampled() bool {
+	return s.isSampled && !s.tailDropped.Load()
 }
 
 func (s *span) Duration() time.Duration {
