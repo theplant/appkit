@@ -1,6 +1,6 @@
 module github.com/theplant/appkit
 
-go 1.27.0
+go 1.27.3
 
 require (
 	github.com/airbrake/gobrake/v5 v5.6.1
